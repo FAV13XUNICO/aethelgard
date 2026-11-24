@@ -1336,11 +1336,11 @@ let selectedDifficulty='easy';
 //   respiro     = cuánto espera tras una oleada fallida antes de volver (×)
 const DIFFICULTY_SETTINGS={
   easy:  {label:"🌿 Fácil",  aiHpMult:0.85,aiDamageMult:0.85,aiSpeedMult:0.95,
-          ingreso:0.8, ritmo:1.35,obreros:12,bases:2,aiStartDelay:180,waveSizeMult:0.7, apunta:0,  retirada:0.3, objetos:2,respiro:1.5},
+          ingreso:0.8, ritmo:1.35,obreros:12,bases:2,aiStartDelay:180,waveSizeMult:0.7, apunta:0,  retirada:0.3, objetos:2,respiro:1.5, explora:150,acoso:0,  micro:false,contra:false},
   normal:{label:"⚔️ Normal", aiHpMult:1.0, aiDamageMult:1.0, aiSpeedMult:1.0,
-          ingreso:1.0, ritmo:1.0, obreros:16,bases:3,aiStartDelay:120,waveSizeMult:1.0, apunta:1,  retirada:0.5, objetos:4,respiro:1.0},
+          ingreso:1.0, ritmo:1.0, obreros:16,bases:3,aiStartDelay:120,waveSizeMult:1.0, apunta:1,  retirada:0.5, objetos:4,respiro:1.0, explora:90, acoso:150,micro:true, contra:true},
   hard:  {label:"💀 Difícil",aiHpMult:1.1, aiDamageMult:1.1, aiSpeedMult:1.05,
-          ingreso:1.2, ritmo:0.75,obreros:20,bases:3,aiStartDelay:60, waveSizeMult:1.3, apunta:1.5,retirada:0.55,objetos:6,respiro:0.7},
+          ingreso:1.2, ritmo:0.75,obreros:20,bases:3,aiStartDelay:60, waveSizeMult:1.3, apunta:1.5,retirada:0.55,objetos:6,respiro:0.7, explora:50, acoso:90, micro:true, contra:true},
 };
 function perfilIA(){return DIFFICULTY_SETTINGS[selectedDifficulty]||DIFFICULTY_SETTINGS.normal;}
 function tIA(seg){return seg*perfilIA().ritmo;}   // un tiempo del plan de la IA, según la dificultad
@@ -1945,7 +1945,7 @@ const ZOOM_MIN=0.35,ZOOM_MAX=1.5;
 // Un día completo dura DIA_NOCHE.dia + DIA_NOCHE.noche segundos de juego (24 "horas").
 // De noche: se ve menos (niebla de guerra más cerrada), todo se pinta más oscuro y los
 // campamentos neutrales DUERMEN (no atacan aunque pases al lado, salvo que los golpees).
-const DIA_NOCHE={dia:180,noche:150,hora_inicio:7,vision_noche:0.65,transicion:12};
+const DIA_NOCHE={dia:180,noche:150,hora_inicio:7,vision_dia:1.35,vision_noche:0.65,transicion:12}; // vision_dia: de día se ve MÁS lejos (×1.35); de noche, como siempre
 function horaDelDia(t){ // 0..24
   const T=DIA_NOCHE.dia+DIA_NOCHE.noche,x=(((t||0)%T)+T)%T;
   // amanece a las 6 y anochece a las 18: el día y la noche duran lo que diga DIA_NOCHE
@@ -1969,7 +1969,7 @@ function revisarCambioDiaNoche(){
   if(n!==_eraNoche){
     _eraNoche=n;
     if(n)triggerAlert("🌙 Cae la noche: se ve menos y los campamentos duermen","#9db4ff",0);
-    else{triggerAlert("☀️ Amanece: los campamentos despiertan","#ffe08a",0);for(const u of neutralUnits)u._despierto=false;}
+    else{triggerAlert("☀️ Amanece: se ve más lejos y los campamentos despiertan","#ffe08a",0);for(const u of neutralUnits)u._despierto=false;}
   }
 }
 // ── el reloj (estilo velocímetro) ──
@@ -2776,7 +2776,7 @@ function updateAnim(u,dt){
     }
   }
   // ── obrero trabajando (talando o reparando) ──
-  if(anim.work&&anim.work.sheet&&!moving&&(u.state==="repairing"||u.state==="building"||u.state==="building_ai"||(u.state==="chop"&&u.chopProgress>0&&!(u.carrying>0&&u.carrying>=(typeof cargaMetal!=="undefined"?cargaMetal:99))))){
+  if(anim.work&&anim.work.sheet&&!moving&&(u.state==="repairing"||u.state==="building"||u.state==="building_ai"||(u.state==="chop"&&u.chopProgress>0&&!(u.carrying>0&&u.carrying>=(typeof cargaMetal!=="undefined"?cargaMetal:99)))||(u.state==="chop_ai"&&u.chopProgress>0&&u.carrying<AI_CARGA_METAL))){
     if(u.animState!=="work"&&u._enTrabajo!==true){u._animFrame=0;u._animTimer=0;}
     u._enTrabajo=true;u.animState="work";
     const W=anim.work,nW=(W.cuadros||[]).length||W.count||1;
@@ -5377,7 +5377,9 @@ function processProduction(str,dt){
 // Carga por viaje de un ingeniero (el jugador lleva workerCarry=10). Ya no hay
 // oro "pasivo": la IA solo gana lo que sus ingenieros traen de la mina.
 const AI_CARGA=10;
+const AI_CARGA_METAL=10;   // metal que trae un ingeniero por viaje desde las rocas
 function processAIWorkers(){
+  if(aiTimer%90===45)repartirTrabajoIA();
   for(let i=aiWorkers.length-1;i>=0;i--){
     let w=aiWorkers[i];
     if(w.hidden&&w.state!==w._estadoMina)salirDeMina(w,findNearestAIBase(w));
@@ -5396,9 +5398,187 @@ function processAIWorkers(){
       s.progress+=100/((s._segObra||30)*60);s.hp=Math.min(s.maxHp,Math.max(1,(s.progress/100)*s.maxHp)); // desde cero, a su ritmo
       if(s.progress>=100){s.isUnderConstruction=false;s.hp=s.maxHp;s.trainingProgress=0;w.state="mine";w.targetBuild=null;collisionGridDirty=true;if(s.type==="base")for(let k=0;k<3;k++){const o=aiWorkers.find(o=>o.state==="mine"&&!o.hidden&&o._minaIA!==findNearestMine(s.x+60,s.y+60));if(o){o._minaIA=null;o._esperaMina=null;}} // 3 ingenieros a la mina nueva
       triggerAlert(`⚠️ IA construyó ${s.name}`,"#ff8844",330);if(!fogEnabled||isTileVisible(s.x+s.size/2,s.y+s.size/2))pingMapa(s.x+s.size/2,s.y+s.size/2,"neutral",s);}
+    } else if(w.state==="chop_ai"){
+      picarMetalIA(w);
+    } else if(w.state==="explora_ai"){
+      explorarIA(w);
     } else {w.state="mine";}
     if(!w.hidden)for(let s of soldiers){if(Math.hypot(w.x-s.x,w.y-s.y)<ALCANCE_MELEE&&s.attackTimer<=0){w.hp-=s.damage*0.5;s.attackTimer=s.attackCooldown;}}
     if(w.hp<=0){aiWorkerCount--;aiPop--;aiWorkers.splice(i,1);}
+  }
+}
+
+// ═══════════════ IA VIVA: METAL, EXPLORACIÓN, PATRULLAS Y ACOSO (estilo WC3) ═══════════════
+// Cuántos ingenieros pican metal: ~1 de cada 3 (más si le falta metal, 1 solo si le sobra).
+function repartirTrabajoIA(){
+  const libres=aiWorkers.filter(w=>w.state==="mine"||w.state==="mine_ai"||w.state==="chop_ai");
+  if(libres.length<3)return;
+  let meta=Math.max(1,Math.round(libres.length*0.3));
+  if(aiLumber<80)meta++;
+  if(aiLumber>450)meta=Math.max(1,Math.round(libres.length*0.15));
+  const pican=aiWorkers.filter(w=>w.state==="chop_ai");
+  if(pican.length<meta){
+    const w=aiWorkers.find(w=>(w.state==="mine"||w.state==="mine_ai")&&!w.hidden&&!(w.carrying>0));
+    if(w){w.state="chop_ai";w.carrying=0;w.chopProgress=0;w.targetTree=null;w._minaIA=null;w._esperaMina=null;}
+  } else if(pican.length>meta){
+    const w=pican.find(w=>!(w.carrying>0));if(w){w.state="mine";w.targetTree=null;}
+  }
+}
+// Igual que tus obreros: camina a la roca más cercana, la pica y lleva el metal al Cuartel General.
+function picarMetalIA(w){
+  const base=findNearestAIBase(w);
+  if(!base){w.state="mine";return;}
+  if(w.carrying>=AI_CARGA_METAL){
+    if(distA(w,base)>ALCANCE_ENTREGA)irHacia(w,base.x+base.size/2,base.y+base.size/2,1.6);
+    else{const k=(IA_INGRESO[selectedDifficulty]||1)*nivelMantenimiento(aiPop).factor;aiLumber+=Math.round(w.carrying*k);w.carrying=0;detener(w);}
+    return;
+  }
+  if(!w.targetTree||w.targetTree.hp<=0||!trees.includes(w.targetTree)){
+    // la roca más cercana a SU base (no se va a picar al otro lado del mapa)
+    w.targetTree=null;let md=Infinity;const reg=w._vx!==undefined?region[w._vy*PW+w._vx]:0,bx=base.x+base.size/2,by=base.y+base.size/2;
+    for(const t of trees){if(t._inalcanzable&&frameMov-t._inalcanzable<1800)continue;const d=(t.x-bx)**2+(t.y-by)**2;if(d<md&&d<900*900&&arbolAccesible(t,reg)){md=d;w.targetTree=t;}}
+    if(!w.targetTree){w.state="mine";return;}
+  }
+  const tx=w.targetTree.x+20,ty=w.targetTree.y+20;
+  if(Math.hypot(tx-w.x,ty-w.y)>ALCANCE_TALAR){
+    w.chopProgress=0;
+    if(irHacia(w,tx,ty,1.6)&&!w._paso){w.targetTree._inalcanzable=frameMov;w.targetTree=null;}
+  } else {
+    mirarHacia(w,{x:tx,y:ty});w.chopProgress+=100/(METAL_SEGUNDOS_POR_UNIDAD*60);
+    if(w.chopProgress>=100){w.chopProgress=0.01;w.carrying=Math.min(AI_CARGA_METAL,(w.carrying||0)+1);w.targetTree.hp-=100/50;if(w.carrying>=AI_CARGA_METAL){w.chopProgress=0;detener(w);}}
+  }
+}
+// ── EXPLORADOR: al principio un ingeniero va a ver tu base (como en WC3) y vuelve a minar ──
+let aiExploroBase=false,aiIntel={visto:0,torres:0,ejercito:0};
+function explorarIA(w){
+  const pb=getPlayerBase();
+  if(!pb){w.state="mine";return;}
+  w._tExplora=(w._tExplora||0)+1;
+  const tx=pb.x+pb.size/2,ty=pb.y+pb.size+120;
+  const herido=w.hp<(w._hpExplora||w.maxHp);
+  if(Math.hypot(w.x-tx,w.y-ty)<260||herido||w._tExplora>60*75){
+    aiIntel={visto:gameTime,torres:structures.filter(s=>s.team==="player"&&s.type==="tower").length,ejercito:soldiers.length};
+    w.state="mine";w._minaIA=null;w._tExplora=0;return;
+  }
+  irHacia(w,tx,ty,1.8);
+}
+function mandarExploradorIA(){
+  if(aiExploroBase||gameTime<perfilIA().explora)return;
+  const w=aiWorkers.find(w=>(w.state==="mine"||w.state==="mine_ai")&&!w.hidden&&!(w.carrying>0));
+  if(!w)return;
+  aiExploroBase=true;w.state="explora_ai";w._tExplora=0;w._hpExplora=w.hp;w._minaIA=null;w._esperaMina=null;
+}
+// ── RESERVA: mientras junta la oleada, el ejército forma filas delante de la base,
+// mirando hacia ti, y algunas tropas patrullan entre sus edificios y su mina ──
+function frenteIA(){
+  const pb=getPlayerBase(),dx=(pb?pb.x+pb.size/2:aiRallyX-1500)-aiRallyX,dy=(pb?pb.y+pb.size/2:aiRallyY+600)-aiRallyY,l=Math.hypot(dx,dy)||1;
+  return {fx:dx/l,fy:dy/l};
+}
+function puestoReserva(i){
+  const {fx,fy}=frenteIA(),px=-fy,py=fx,fila=Math.floor(i/6),col=(i%6)-2.5;
+  return {x:aiRallyX+px*col*42-fx*fila*40,y:aiRallyY+py*col*42-fy*fila*40};
+}
+// El punto de reunión ya no queda pegado al cuartel: se pone SOBRE EL CAMINO hacia tu base,
+// unos 650 de distancia delante de su Cuartel General (la "puerta" de su base, como en WC3).
+let aiReunionLista=false;
+function calcularReunionIA(){
+  const a=getAIBase(),pb=getPlayerBase();if(!a||!pb)return;
+  const s0=esquinaLibreCerca(a.x+a.size/2,a.y+a.size+30,0,false,40,0),g=esquinaLibreCerca(pb.x+pb.size/2,pb.y+pb.size+30,0,false,60,0);
+  if(!s0||!g)return;
+  const r=buscarRuta(s0[0],s0[1],g[0],g[1],0);if(!r||r.length<8)return;
+  let px=s0[0],py=s0[1],dist=0;
+  for(const c of r){const vx=c%PW,vy=(c/PW)|0;dist+=Math.hypot(vx-px,vy-py)*PC;px=vx;py=vy;if(dist>=650)break;}
+  aiRallyX=px*PC;aiRallyY=py*PC;
+}
+function tareaEspecialIA(en){return en._creep||en._huye||en._retirada||en._acoso||en._patrulla||en._curarse||en._objIA==="defensa";}
+function ordenarReservaIA(radio){
+  let i=0;
+  for(const en of enemies){
+    if(en.isHero||tareaEspecialIA(en))continue;
+    const p=puestoReserva(i++);
+    if(Math.hypot(en.x-p.x,en.y-p.y)>radio&&(!en._ruta||en._ruta.length===0))setUnitDestination(en,p.x,p.y);
+  }
+}
+function puntosGuardiaIA(){
+  const pts=[];
+  for(const st of structures)if(st.team==="enemy"&&!st.isUnderConstruction&&st.type!=="farm")pts.push({x:st.x+st.size/2+(Math.random()*2-1)*st.size,y:st.y+st.size+50});
+  for(const m of iaMinas())pts.push({x:m.x+(Math.random()*2-1)*90,y:m.y+110});
+  return pts;
+}
+function patrullasIA(){
+  // las que ya patrullan: cuando llegan, vuelven a la fila
+  for(const en of enemies)if(en._patrulla&&(!en._ruta||en._ruta.length===0)){
+    if((en._patrullaT=(en._patrullaT||0)+1)>4){en._patrulla=false;en._patrullaT=0;}
+  }
+  const reserva=enemies.filter(en=>!en.isHero&&!tareaEspecialIA(en));
+  const enRonda=enemies.filter(en=>en._patrulla).length;
+  if(reserva.length<3||enRonda>=Math.min(4,Math.floor(reserva.length/3)))return;
+  const pts=puntosGuardiaIA();if(!pts.length)return;
+  const p=pts[Math.floor(Math.random()*pts.length)];
+  const grupo=reserva.sort(()=>Math.random()-0.5).slice(0,Math.random()<0.5?1:2);
+  for(const en of grupo){en._patrulla=true;en._patrullaT=0;setUnitDestination(en,p.x+Math.random()*40-20,p.y+Math.random()*40-20);}
+}
+// ── ACOSO: 2-3 tropas rápidas van a tu mina a cazar obreros y se van si se ponen feas ──
+let aiAcoso=null,aiAcosoCd=0;
+function minaDelJugador(){
+  let mejor=null,mn=0;
+  for(const m of mines){const n=workers.filter(w=>Math.hypot(w.x-m.x,w.y-m.y)<300).length;if(n>mn){mn=n;mejor=m;}}
+  return mejor;
+}
+function acosoIA(){
+  const cada=perfilIA().acoso;if(!cada)return;
+  if(aiAcoso){
+    const g=aiAcoso.grupo.filter(e=>enemies.includes(e)&&e.hp>0);
+    aiAcoso.t+=30;
+    const c=g.length?centroDe(g):null;
+    const def=c?soldiers.filter(su=>Math.hypot(su.x-c.x,su.y-c.y)<350):[];
+    const herido=g.some(e=>e.hp<e.maxHp*0.45);
+    const superados=def.length>g.length||fuerzaDe(def,true)>fuerzaDe(g,false)*0.8;
+    if(!g.length||herido||superados||aiAcoso.t>60*30){
+      for(const e of g){e._acoso=false;e._retirada=true;e._objIA=null;setUnitDestination(e,aiRallyX+Math.random()*60-30,aiRallyY+Math.random()*60-30);}
+      if(g.length&&(herido||superados))triggerAlert("🏃 Los acosadores de la Coalición se retiran","#ff8844",300);
+      aiAcoso=null;aiAcosoCd=60*cada;return;
+    }
+    const m=aiAcoso.mina;
+    for(const e of g)if(Math.hypot(e.x-m.x,e.y-m.y)>150&&(!e._ruta||e._ruta.length===0))setUnitDestination(e,m.x+Math.random()*80-40,m.y+90+Math.random()*40);
+    return;
+  }
+  if(aiAcosoCd>0){aiAcosoCd-=30;return;}
+  if(gameTime<perfilIA().aiStartDelay+pazExtra+120)return;   // nunca antes de que termine el tiempo de paz
+  const m=minaDelJugador();if(!m)return;
+  const candidatos=enemies.filter(e=>!e.isHero&&!tareaEspecialIA(e)&&e.hp>=e.maxHp*0.8).sort((a,b)=>(b.speed+(b.range?1:0))-(a.speed+(a.range?1:0)));
+  if(candidatos.length<4)return;
+  const grupo=candidatos.slice(0,selectedDifficulty==="hard"?3:2);
+  for(const e of grupo){e._acoso=true;e._patrulla=false;setUnitDestination(e,m.x+Math.random()*80-40,m.y+90);}
+  aiAcoso={grupo,mina:m,t:0};
+  if(!fogEnabled||isTileVisible(m.x,m.y+90))triggerAlert("⚠️ ¡La Coalición ataca a tus obreros!","#ff4444",300);
+}
+function soltarTareasIA(){
+  for(const en of enemies){en._acoso=false;en._patrulla=false;}
+  aiAcoso=null;
+}
+// ── MICRO: en Normal y Difícil, una tropa muy herida se aparta de la pelea a curarse ──
+function microHeridosIA(){
+  if(!perfilIA().micro)return;
+  const base=getAIBase();
+  const medicos=enemies.filter(e=>e.name==="Médico de Campo");
+  for(const en of enemies){
+    if(en.isHero||en._huye)continue;
+    if(en._curarse){
+      if(en.hp>=en.maxHp*0.6||(!soldiers.some(su=>Math.hypot(su.x-en.x,su.y-en.y)<500)&&(!en._ruta||!en._ruta.length))){en._curarse=false;en._retirada=false;en._objIA=null;}
+      continue;
+    }
+    if(en.hp<en.maxHp*0.22&&en.name!=="Médico de Campo"&&soldiers.some(su=>Math.hypot(su.x-en.x,su.y-en.y)<220)){
+      let dest=null,md=Infinity;
+      for(const m of medicos){const d=Math.hypot(m.x-en.x,m.y-en.y);if(d<700&&d<md){md=d;dest={x:m.x,y:m.y};}}
+      if(!dest){
+        // si no hay médico: retrocede alejándose del enemigo más cercano
+        let cerca=null,dc=Infinity;for(const su of soldiers){const d=Math.hypot(su.x-en.x,su.y-en.y);if(d<dc){dc=d;cerca=su;}}
+        if(!cerca)continue;
+        dest={x:en.x+(en.x-cerca.x)/(dc||1)*260,y:en.y+(en.y-cerca.y)/(dc||1)*260};
+      }
+      en._curarse=true;en._retirada=true;en._objIA=null;setUnitDestination(en,dest.x,dest.y);
+    }
   }
 }
 
@@ -5746,7 +5926,7 @@ const IA_MEJORAS={
 const IA_INGRESO={get easy(){return DIFFICULTY_SETTINGS.easy.ingreso;},get normal(){return DIFFICULTY_SETTINGS.normal.ingreso;},get hard(){return DIFFICULTY_SETTINGS.hard.ingreso;}}; // (sale de DIFFICULTY_SETTINGS)
 const IA_OBREROS_POR_MINA=5;
 const iaMaxObreros=()=>perfilIA().obreros, iaMaxBases=()=>perfilIA().bases;
-const IA_LUMBER_POR_VIAJE=3;                       // los ingenieros traen también algunos componentes
+const IA_LUMBER_POR_VIAJE=1;                       // los mineros traen un poquito de metal; el resto lo pican de las rocas (estado chop_ai)
 
 function iaEdif(t,terminado){return structures.filter(s=>s.team==="enemy"&&s.type===t&&(!terminado||!s.isUnderConstruction));}
 function iaBaseDeMina(m){return structures.find(s=>s.team==="enemy"&&s.type==="base"&&!s.isUnderConstruction&&Math.hypot(s.x+s.size/2-m.x,s.y+s.size/2-m.y)<520);}
@@ -5971,7 +6151,7 @@ function iaCreeping(voss){
   }
   if(aiPhase==="attack"||aiPhase==="defend"||aiHeroRetreating||voss.hp<voss.maxHp*0.8)return;
   // escolta: hasta 2 + nivel de la IA tropas que no estén haciendo otra cosa
-  const libres=enemies.filter(e=>!e.isHero&&!e._huye&&!e._retirada&&!e._creep);
+  const libres=enemies.filter(e=>!e.isHero&&!e._huye&&!e._retirada&&!e._creep&&!e._acoso&&!e._curarse);
   libres.sort((a,b)=>Math.hypot(a.x-voss.x,a.y-voss.y)-Math.hypot(b.x-voss.x,b.y-voss.y));
   if(libres.length<IA_ESCOLTA_MIN)return;   // espera a tener un grupo moderado
   const main=getAIBase()||voss;
@@ -5989,6 +6169,7 @@ function iaCreeping(voss){
   };
   const salir=(info,grupo)=>{
     const escolta=grupo.filter(u=>u!==voss);
+    for(const u of grupo)u._patrulla=false;
     aiCreep={...info,unidades:grupo,escoltaInicial:escolta.length,etapa:"reunir",t0:aiTimer};
     for(const u of grupo){u._creep=true;u._objIA=null;}
     for(const u of escolta)setUnitDestination(u,voss.x+Math.random()*60-30,voss.y+Math.random()*60-30); // primero se juntan con él
@@ -6120,6 +6301,7 @@ function iaUsarObjetos(v){
 function processAI(dt){
   if(MODO_SUPERVIVENCIA){gameTime+=dt/1000;procesarSupervivencia();return;} // (el reloj del juego avanza acá)
   aiTimer++;gameTime+=dt/1000;
+  if(!aiReunionLista&&aiTimer>2){aiReunionLista=true;try{calcularReunionIA();}catch(e){}}
   // el nivel de la IA ya no sube solo con el tiempo: lo sube investigando (iaMejoraLista)
   const spd=1+aiLevel*0.25;
 
@@ -6127,6 +6309,13 @@ function processAI(dt){
 
   // ── ECONOMÍA: ingenieros, edificios desde cero, mejoras y expansión ──
   if(aiTimer%30===0)iaEconomia();
+  // ── IA VIVA: explorar tu base, patrullar la suya, acosar tus obreros y cuidar a sus heridos ──
+  if(aiTimer%30===0)mandarExploradorIA();
+  if(aiTimer%15===0)microHeridosIA();
+  if(aiPhase==="build_army"||aiPhase==="reinforce"){
+    if(aiTimer%30===10)acosoIA();
+    if(aiTimer%300===150)patrullasIA();
+  }
   // red de seguridad: un edificio sin ingeniero (el suyo murió) recibe otro
   if(aiTimer%120===0){
     for(const s of structures){
@@ -6152,7 +6341,7 @@ function processAI(dt){
     for(const bar of aiBarracksList){
       if(bar.queue.length<3&&aiPop<aiMaxPop&&enemies.length<aiWaveSize()+2&&aiTimer%Math.floor(100/spd)===0)entrenarIA(bar); // no acumula más que la oleada mientras espera el primer ataque
     }
-    if(aiTimer%Math.floor(280/spd)===0)for(let en of enemies){if(en._creep||en._huye)continue;let d=Math.hypot(en.x-aiRallyX,en.y-aiRallyY);if(d>100){setUnitDestination(en,aiRallyX+Math.random()*60-30,aiRallyY+Math.random()*60-30);}}
+    if(aiTimer%120===0)ordenarReservaIA(60);
     if(aiBarracksList.length>0&&tropasIA().length>=aiWaveSize()&&gameTime>=Math.max(60,perfilIA().aiStartDelay+pazExtra)+120&&aiTimer%500===0)aiPhase="attack"; // el primer ataque no llega antes de aiStartDelay+120 s (fácil 5:00, normal 4:00, difícil 3:00)
   }
   // ── DEFENSA: si el jugador ataca la base, todas las tropas vuelven a defender ──
@@ -6160,7 +6349,7 @@ function processAI(dt){
     const amenaza=amenazaBaseIA();
     if(amenaza.length>=2){
       aiSinAmenaza=0;
-      if(aiPhase!=="defend"){aiFaseAnterior=aiPhase;aiPhase="defend";aiOleada=null;triggerAlert("🛡️ ¡La Coalición defiende su base!","#ff8844",300);}
+      if(aiPhase!=="defend"){aiFaseAnterior=aiPhase;aiPhase="defend";aiOleada=null;soltarTareasIA();triggerAlert("🛡️ ¡La Coalición defiende su base!","#ff8844",300);}
       const c=centroDe(amenaza);
       for(const en of enemies){
         if(en._huye)continue;en._retirada=false;
@@ -6170,6 +6359,11 @@ function processAI(dt){
     } else if(aiPhase==="defend"&&(aiSinAmenaza+=30)>=480){
       aiPhase=aiFaseAnterior==="attack"?"reinforce":(aiFaseAnterior||"build_army");
       for(const en of enemies)en._objIA=null;
+      // CONTRAATAQUE (como en WC3): si aguantó tu ataque y le quedó un buen ejército, sale a buscarte
+      if(perfilIA().contra&&getAIBarracks().length&&tropasIA().filter(e=>!e._huye).length>=Math.ceil(aiWaveSize()*0.6)&&gameTime>=perfilIA().aiStartDelay+pazExtra+120){
+        aiPhase="attack";aiOleada=null;aiAttackCooldown=0;
+        triggerAlert("⚔️ ¡La Coalición contraataca!","#ff4444",300);
+      }
     }
   }
   if(aiPhase==="defend"){
@@ -6183,7 +6377,8 @@ function processAI(dt){
       // la oleada sale toda junta desde el punto de reunión, con un objetivo
       if(!aiOleada){
         aiOleada={inicial:enemies.filter(e=>!e._huye).length,objetivo:null};
-        for(const en of enemies){en._retirada=false;en._objIA=null;}
+        soltarTareasIA();
+        for(const en of enemies){en._retirada=false;en._curarse=false;en._objIA=null;}
         triggerAlert("⚠️ ¡La Coalición avanza con su ejército!","#ff4444",300);
         {const c=centroDe(enemies.filter(e=>!e._huye));if(c)pingMapa(c.x,c.y,"ataque");}
       }
@@ -6199,7 +6394,7 @@ function processAI(dt){
       if(bar.queue.length<4&&aiPop<aiMaxPop&&enemies.length<aiWaveSize()*2&&aiTimer%Math.floor(90/spd)===0)entrenarIA(bar);
     }
     // reagrupa en el punto de reunión y vuelve a atacar cuando junta una oleada
-    if(aiTimer%Math.floor(200/spd)===0)for(const en of enemies){if(en._huye||en._retirada||en._creep)continue;if(Math.hypot(en.x-aiRallyX,en.y-aiRallyY)>160&&(!en._ruta||en._ruta.length===0))setUnitDestination(en,aiRallyX+Math.random()*80-40,aiRallyY+Math.random()*80-40);}
+    if(aiTimer%120===0)ordenarReservaIA(60);
     if(aiAttackCooldown>0)aiAttackCooldown--;
     else if(tropasIA().filter(e=>!e._huye).length>=aiWaveSize()){aiPhase="attack";aiOleada=null;}
   }
@@ -6661,7 +6856,7 @@ function update(dt){
 
   // fog
   resetFogVisible();
-  const vis=1-(1-DIA_NOCHE.vision_noche)*nocheFactor(gameTime); // de noche se ve menos
+  const nf=nocheFactor(gameTime),vis=DIA_NOCHE.vision_dia+(DIA_NOCHE.vision_noche-DIA_NOCHE.vision_dia)*nf; // de día se ve más lejos, de noche menos
   for(let s of soldiers)revealFog(s.x,s.y,220*vis);
   for(let w of workers)revealFog(w.x,w.y,160*vis);
   for(let str of structures)if(str.team==="player"&&!str.isUnderConstruction)revealFog(str.x+str.size/2,str.y+str.size/2,180*vis);
