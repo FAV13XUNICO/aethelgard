@@ -2304,7 +2304,7 @@ function drawGroundTiles(){
 // ═══════════════ EDGE-SCROLL ═══════════════
 // La cámara se mueve al TOCAR el borde de la pantalla (como en Warcraft III), no al acercarse:
 // solo los últimos píxeles cuentan, así elegir un botón del HUD ya no la mueve.
-const EDGE=6;let CAM_SPD=20; // la velocidad la elige el jugador en AJUSTES
+const EDGE=3;let CAM_SPD=20; // la velocidad la elige el jugador en AJUSTES
 // Arranca "en el centro": antes arrancaba en (0,0) y, hasta mover el mouse, la
 // cámara se iba sola a la esquina de arriba a la izquierda (pantalla negra al empezar).
 let winMouseX=window.innerWidth/2,winMouseY=window.innerHeight/2;
