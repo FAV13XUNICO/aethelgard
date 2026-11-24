@@ -2302,7 +2302,9 @@ function drawGroundTiles(){
   ctx.restore();
 }
 // ═══════════════ EDGE-SCROLL ═══════════════
-const EDGE=50;let CAM_SPD=20; // la velocidad la elige el jugador en AJUSTES
+// La cámara se mueve al TOCAR el borde de la pantalla (como en Warcraft III), no al acercarse:
+// solo los últimos píxeles cuentan, así elegir un botón del HUD ya no la mueve.
+const EDGE=6;let CAM_SPD=20; // la velocidad la elige el jugador en AJUSTES
 // Arranca "en el centro": antes arrancaba en (0,0) y, hasta mover el mouse, la
 // cámara se iba sola a la esquina de arriba a la izquierda (pantalla negra al empezar).
 let winMouseX=window.innerWidth/2,winMouseY=window.innerHeight/2;
@@ -2316,10 +2318,10 @@ function updateCamera(){
   CAM_SPD=AJUSTES.camara||20;
   const W=window.innerWidth,H=window.innerHeight;
   if(AJUSTES.bordes){ // se puede apagar en AJUSTES
-  if(winMouseX<EDGE)          mapWrapper.scrollLeft-=CAM_SPD*(1-winMouseX/EDGE);
-  if(winMouseX>W-EDGE)        mapWrapper.scrollLeft+=CAM_SPD*(1-(W-winMouseX)/EDGE);
-  if(winMouseY<EDGE)          mapWrapper.scrollTop -=CAM_SPD*(1-winMouseY/EDGE);
-  if(winMouseY>H-EDGE)        mapWrapper.scrollTop +=CAM_SPD*(1-(H-winMouseY)/EDGE);
+  if(winMouseX<EDGE)          mapWrapper.scrollLeft-=CAM_SPD;
+  if(winMouseX>=W-EDGE)       mapWrapper.scrollLeft+=CAM_SPD;
+  if(winMouseY<EDGE)          mapWrapper.scrollTop -=CAM_SPD;
+  if(winMouseY>=H-EDGE)       mapWrapper.scrollTop +=CAM_SPD;
   }
   // flechas del teclado
   if(keys["arrowleft"])mapWrapper.scrollLeft-=CAM_SPD;
@@ -2360,7 +2362,7 @@ function cosaBajoElMouse(){
 function actualizarCursor(){
   let clave="normal";
   const W=window.innerWidth,H=window.innerHeight;
-  const v=winMouseY<EDGE?"arriba":winMouseY>H-EDGE?"abajo":"",h=winMouseX<EDGE?"izquierda":winMouseX>W-EDGE?"derecha":"";
+  const v=winMouseY<EDGE?"arriba":winMouseY>=H-EDGE?"abajo":"",h=winMouseX<EDGE?"izquierda":winMouseX>=W-EDGE?"derecha":"";
   if((v||h)&&AJUSTES.bordes)clave="borde_"+(v&&h?v+"_"+h:(v||h));
   else if(attackPending)clave="atacar";
   else if(objetoPendiente)clave=ARTE_CURSORES.usar_objeto?"usar_objeto":"atacar";
