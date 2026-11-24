@@ -802,11 +802,12 @@ const ARTE_UNIDADES={
                   walk:{sheet:"paladin_alien_caminando.png",count:9,fps:11,drawW:100,offY:19,offX:8}},   // Aeon Thraze (héroe)
   obrero:        {idle:{sheet:"obrero_png_profe.png",count:5,fps:6,drawW:84,offY:23,offX:-2},
                   work:{sheet:"obrero_trabajando_alien.png",count:10,fps:12,drawW:84,offY:21,offX:-1}},   // Dron Constructor (work = talando / reparando)
-  soldado:       {idle:  {sheet:"robot_mele.png",count:7,fps:8,drawW:70,offY:3,offX:-4},
-                  attack:{sheet:"alien_atacando1.png",count:9,fps:14,disparoEn:4,drawW:70,offY:9,offX:-4}},   // Centinela de Plasma (attack = espadazo)
+  // un PNG por unidad: cada FILA es una animación (fila:0 = la de arriba). frameW/frameH = tamaño de un cuadro.
+  soldado:       {idle:  {sheet:"centinela_plasma-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:8,drawW:70,offY:3,offX:-4},
+                  attack:{sheet:"centinela_plasma-sheet.png",fila:1,count:9,frameW:100,frameH:100,fps:14,disparoEn:4,drawW:70,offY:9,offX:-4}},   // Centinela de Plasma (fila 0 quieto, fila 1 espadazo)
   fusilero:      {sheet:"arquero_disparador-sheet.png",count:5,fps:10,drawW:90,offY:19,offX:4},   // Emisor de Pulso (el arquero Kaelen)
-  caballero:     {idle:{sheet:"alien_guerrero_reforsado-sheet.png",count:7,fps:6,drawW:76,offY:12,offX:-3},
-                  walk:{sheet:"alien_reforzado_caminando-sheet.png",count:7,fps:10,drawW:76,offY:11,offX:-2}}, // Coloso Blindado
+  caballero:     {idle:{sheet:"coloso_blindado-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:6,drawW:76,offY:12,offX:-3},
+                  walk:{sheet:"coloso_blindado-sheet.png",fila:1,count:7,frameW:100,frameH:100,fps:10,drawW:76,offY:11,offX:-2}}, // Coloso Blindado (fila 0 quieto, fila 1 caminando)
   sacerdote:     {idle:{sheet:"alien_curandero.png",count:3,fps:4,drawW:70,offY:9,offX:-1},
                   walk:{sheet:"curandero_67_caminando_en_sweet.png",count:8,fps:10,drawW:70,offY:7},
                   habilidad:{sheet:"mago_haciendo_magia.png",count:5,fps:9,drawW:62,offY:7,offX:1}},       // Unidad de Nanoreparación (habilidad = al sanar o disipar)
@@ -1535,7 +1536,7 @@ function fichaDibujo(entrada,emoji){
   const img=getAnimImg(src);
   const pintar=()=>{if(!imgLista(img))return;const n=e.count||1,fw=e.frameW||img.naturalWidth/n,fh=e.frameH||img.naturalHeight;
     const c=document.createElement("canvas");c.width=64;c.height=64;const g=c.getContext("2d");g.imageSmoothingEnabled=false;
-    const k=Math.min(64/fw,64/fh);g.drawImage(img,0,0,fw,fh,(64-fw*k)/2,(64-fh*k)/2,fw*k,fh*k);caja.textContent="";caja.appendChild(c);};
+    const k=Math.min(64/fw,64/fh);g.drawImage(img,0,(e.fila||0)*fh,fw,fh,(64-fw*k)/2,(64-fh*k)/2,fw*k,fh*k);caja.textContent="";caja.appendChild(c);};
   if(imgLista(img))pintar();else img.addEventListener("load",pintar,{once:true});
   return caja;
 }
@@ -1610,7 +1611,7 @@ function pantallaCarga(alTerminar){
     if(elegido){const src=typeof elegido==="string"?elegido:elegido.sheet,img=getAnimImg(src);
       if(imgLista(img)){const n=elegido.count||1,fw=elegido.frameW||img.naturalWidth/n,fh=elegido.frameH||img.naturalHeight;
         const fr=Math.floor((performance.now()-t0)/1000*(elegido.fps||6)*VELOCIDAD_ANIMACION)%n,k=Math.min(220/fw,220/fh);
-        g.clearRect(0,0,220,220);g.drawImage(img,fr*fw,0,fw,fh,(220-fw*k)/2,(220-fh*k)/2,fw*k,fh*k);}}
+        g.clearRect(0,0,220,220);g.drawImage(img,fr*fw,(elegido.fila||0)*fh,fw,fh,(220-fw*k)/2,(220-fh*k)/2,fw*k,fh*k);}}
     const hechos=imgs.filter(i=>i.complete).length,total=imgs.length||1,seg=(performance.now()-t0)/1000;
     const pct=Math.min(100,Math.round(Math.min(hechos/total,seg/2.5)*100));
     document.getElementById("carga-relleno").style.width=pct+"%";
@@ -2817,7 +2818,7 @@ function revisarTira(clip,img){
   const n=clip.count||1,W=img.naturalWidth,H=img.naturalHeight;
   if(clip.frameW&&clip.frameW*n>W)console.warn(`[arte] "${clip.sheet}": mide ${W} px de ancho, pero frameW ${clip.frameW} × count ${n} = ${clip.frameW*n}. Revisa count o frameW.`);
   else if(!clip.frameW&&W%n!==0)console.warn(`[arte] "${clip.sheet}": mide ${W} px de ancho y count es ${n}; ${W}÷${n} no da exacto, así que cada frame sale cortado. ¿Cuántos frames tiene de verdad?`);
-  if(clip.frameH&&clip.frameH>H)console.warn(`[arte] "${clip.sheet}": mide ${H} px de alto, pero frameH es ${clip.frameH}.`);
+  if(clip.frameH&&clip.frameH*((clip.fila||0)+1)>H)console.warn(`[arte] "${clip.sheet}": mide ${H} px de alto, pero frameH es ${clip.frameH}.`);
 }
 function getAnimFrame(u){
   const anim=artClips(u.spriteKey||u.animKey);
@@ -2835,7 +2836,7 @@ function getAnimFrame(u){
   revisarTira(clip,img);
   const total=clip.count||1,lista=clip.cuadros,i=lista&&lista.length?lista[(u._animFrame||0)%lista.length]%total:(u._animFrame||0)%total;
   const fw=clip.frameW||img.naturalWidth/total,fh=clip.frameH||img.naturalHeight;
-  return {img,sx:i*fw,sy:0,sw:fw,sh:fh,flip:debeVoltear(u,clip,anim),drawW:clip.drawW,offY:clip.offY||0,offX:clip.offX||0};
+  return {img,sx:i*fw,sy:(clip.fila||0)*fh,sw:fw,sh:fh,flip:debeVoltear(u,clip,anim),drawW:clip.drawW,offY:clip.offY||0,offX:clip.offX||0};
 }
 // Frame de una casilla de edificio: "archivo.png" o una tira (se anima con el reloj).
 function sceneryFrame(entry){
@@ -2849,7 +2850,7 @@ function sceneryFrame(entry){
   if(!imgLista(img))return null;
   const n=entry.count||1,fw=entry.frameW||img.naturalWidth/n,fh=entry.frameH||img.naturalHeight;
   const i=Math.floor(performance.now()/1000*(entry.fps||4)*VELOCIDAD_ANIMACION)%n;
-  return {img,sx:i*fw,sy:0,sw:fw,sh:fh,flip:false,drawW:entry.drawW,offY:entry.offY||0,offX:entry.offX||0};
+  return {img,sx:i*fw,sy:(entry.fila||0)*fh,sw:fw,sh:fh,flip:false,drawW:entry.drawW,offY:entry.offY||0,offX:entry.offX||0};
 }
 // Dibuja el frame centrado en x=cx con `width` px de ancho (el alto respeta la
 // proporción de tu imagen). anchorY: 0.5 = centrado, 1 = cy es el borde de abajo.
@@ -6968,7 +6969,7 @@ function dibujarProyectilPNG(p,sp){
 // Rectángulo donde está dibujado el edificio (para hacerlo aparecer por partes).
 const _cajasPNG=new Map();
 function cajaVisible(fr){ // filas con dibujo dentro del cuadro (0..1); si no se puede leer, el cuadro entero
-  const k=fr.img.src+"|"+fr.sx;
+  const k=fr.img.src+"|"+fr.sx+"|"+fr.sy;
   if(_cajasPNG.has(k))return _cajasPNG.get(k);
   let r={y0:0,y1:1};
   try{
