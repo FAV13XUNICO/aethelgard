@@ -143,8 +143,33 @@ body:not(.cargando-menu) #carga-inicial{opacity:0;}
 #carga-relleno{height:100%;width:0;background:linear-gradient(90deg,#8a6a20,#ffd700);transition:width .2s;}
 .carga-estado{color:#8a7d60;font-size:10px;letter-spacing:2px;}
 /* ── Enciclopedia ── */
+.enc-cuerpo{display:flex;gap:14px;align-items:stretch;justify-content:center;width:min(1180px,calc(100vw - 32px));}
+.enc-caja-lista{width:min(760px,calc(100vw - 32px));max-height:min(58vh,560px);transition:width .2s;}
+.enc-cuerpo.con-detalle .enc-caja-lista{width:auto;flex:1 1 0;min-width:0;}
+.enc-cuerpo.con-detalle .enc-grilla{grid-template-columns:1fr;}
+.enc-detalle{position:relative;flex:0 0 min(480px,48%);max-height:min(58vh,560px);display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
+.enc-detalle[hidden]{display:none;}
+.enc-cerrar{position:absolute;top:6px;right:8px;z-index:2;background:rgba(0,0,0,.45);border:1px solid #555;color:#ddd;font-size:13px;width:24px;height:24px;cursor:pointer;line-height:1;}
+.enc-cerrar:hover{background:rgba(120,20,20,.7);color:#fff;}
+.enc-anims{background:#6e7884;border:2px solid #2a3240;padding:10px 10px 6px;display:flex;flex-wrap:wrap;gap:8px 10px;justify-content:center;}
+.enc-anim{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.enc-anim canvas{width:116px;height:116px;image-rendering:pixelated;background:rgba(0,0,0,.12);}
+.enc-anim-nombre{font-size:10px;color:#ffe9a0;letter-spacing:.5px;text-shadow:0 1px 0 #000;}
+.enc-anim-cuadros{font-size:9px;color:#d8dee6;opacity:.8;}
+.enc-info{padding:2px 4px 6px;}
+.enc-info .enc-nombre{font-size:16px;margin-bottom:2px;}
+.enc-rol{display:inline-block;font-size:10px;color:#1a1408;background:#ffd966;padding:1px 7px;margin:2px 0 6px;font-weight:700;letter-spacing:.5px;}
+.enc-datos{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px 10px;margin:4px 0 8px;}
+.enc-dato{font-size:11px;color:#e6f0ff;background:rgba(0,0,0,.4);padding:3px 6px;border-left:2px solid #4a6a90;}
+.enc-dato b{color:#9fb6d0;font-weight:400;font-size:9px;display:block;letter-spacing:.5px;text-transform:uppercase;}
+.enc-info .enc-desc{font-size:12px;color:#141a22;line-height:1.5;}
+.enc-extra{margin-top:8px;font-size:11.5px;color:#1c2632;line-height:1.55;}
+.enc-extra div::before{content:"▸ ";color:#8a5a00;}
+.enc-ficha.elegida,.enc-ficha.elegida:hover{outline:2px solid #ffd966;outline-offset:-2px;background:rgba(0,0,0,.45)!important;}
+@media (max-width:820px){.enc-cuerpo.con-detalle{flex-direction:column-reverse;}.enc-detalle{flex-basis:auto;max-height:none;}.enc-cuerpo.con-detalle .enc-caja-lista{max-height:30vh;}}
 .enc-grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
-.enc-ficha{display:flex;gap:10px;padding:10px;border:1px solid #3a2c14;background:rgba(0,0,0,.25);}
+.enc-ficha{display:flex;gap:10px;padding:10px;border:1px solid #3a2c14;background:rgba(0,0,0,.25);cursor:pointer;}
+.enc-ficha:hover{background:rgba(255,255,255,.06);}
 .enc-dibujo{width:64px;height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:34px;background:rgba(0,0,0,.35);border:1px solid #2a2010;}
 .enc-dibujo canvas{width:64px;height:64px;image-rendering:pixelated;}
 .enc-nombre{color:var(--gold-bright);font-size:12px;font-weight:700;letter-spacing:.5px;}
@@ -503,8 +528,8 @@ body.sin-teclas .btn-hotkey{display:none!important;}
         <button class="menu-btn principal" id="menu-b-jugar" onclick="mostrarVista('partida')">▶ INICIAR</button>
         <button class="menu-btn" id="menu-b-ajustes" onclick="mostrarVista('ajustes')">⚙ AJUSTES</button>
         <button class="menu-btn" id="menu-b-logros" onclick="mostrarVista('logros')">🏆 LOGROS <span class="menu-cuenta" id="menu-logros-cuenta"></span></button>
-        <button class="menu-btn" id="menu-b-enciclopedia" onclick="mostrarVista('enciclopedia')">📖 ENCICLOPEDIA</button>
         <button class="menu-btn" id="menu-b-creditos" onclick="mostrarVista('creditos')">📜 CRÉDITOS</button>
+        <button class="menu-btn" id="menu-b-enciclopedia" onclick="mostrarVista('enciclopedia')">📖 ENCICLOPEDIA</button>
       </div>
     </div>
 
@@ -566,7 +591,14 @@ body.sin-teclas .btn-hotkey{display:none!important;}
     <div class="menu-vista" id="vista-enciclopedia">
       <div class="menu-titulo">ENCICLOPEDIA</div>
       <div class="diff-row" id="enc-pestanas" style="flex-wrap:wrap;justify-content:center;"></div>
-      <div class="menu-caja" style="width:min(760px,calc(100vw - 32px));max-height:min(58vh,560px);"><div class="enc-grilla" id="enc-grilla"></div></div>
+      <div class="enc-cuerpo" id="enc-cuerpo">
+        <div class="menu-caja enc-caja-lista"><div class="enc-grilla" id="enc-grilla"></div></div>
+        <div class="menu-caja enc-detalle" id="enc-detalle" hidden>
+          <button class="enc-cerrar" id="enc-cerrar" title="Cerrar" aria-label="Cerrar">✕</button>
+          <div class="enc-anims" id="enc-anims"></div>
+          <div class="enc-info" id="enc-info"></div>
+        </div>
+      </div>
       <div class="menu-pie"><button class="menu-btn" onclick="mostrarVista('principal')">◀ VOLVER</button></div>
     </div>
 
@@ -1575,15 +1607,135 @@ function datosEnciclopedia(){
     ],
   };
 }
-let encCategoria=null;
+let encCategoria=null,encElegido=null;
+// ── Ficha completa (panel de la derecha): arriba todas sus animaciones, abajo su información ──
+const ENC_NOMBRES_ANIM={idle:"Quieto",walk:"Caminando",attack:"Atacando",work:"Trabajando",habilidad:"Habilidad"};
+const ENC_EDIF_BOTON={"Núcleo Central":"cmd-b-base","Forja de Autómatas":"cmd-b-barracks","Cámara de Reconstrucción":"cmd-b-altar","Extractor de Energía":"cmd-b-sawmill",
+  "Laboratorio de Armamento":"cmd-b-forge","Torreta de Plasma":"cmd-b-tower","Generador de Soporte Vital":"cmd-b-farm","Portal Dimensional":"cmd-b-sanctuary",
+  "Dron Constructor":"cmd-worker","Centinela de Plasma":"cmd-soldier","Emisor de Pulso":"cmd-rifleman","Coloso Blindado":"cmd-knight",
+  "Unidad de Nanoreparación":"cmd-priest","Manipuladora Cuántica":"cmd-sorceress","Disruptor de Escudos":"cmd-spellbreaker"};
+const ENC_DETALLE={
+  "Aeon Thraze":{rol:"Héroe",extra:["Q · Luz Sagrada: cura a un aliado herido","W · Escudo Divino: invulnerable 6 segundos","E · Aura Devota (Nivel 3): +25% de velocidad a los aliados","R · Resurrección (Nivel 2): revive a los aliados caídos","Si cae, se revive en la Cámara de Reconstrucción"]},
+  "Dron Constructor":{extra:["Se entrena en el Núcleo Central","Carga 10 de cristal o 10 de metal por viaje (20 con Compresión de Carga)"]},
+  "Centinela de Plasma":{extra:["Se entrena en la Forja de Autómatas"]},
+  "Emisor de Pulso":{extra:["Se entrena en la Forja de Autómatas","Requiere el Laboratorio de Armamento","Alcance: 180"]},
+  "Coloso Blindado":{extra:["Se entrena en la Forja de Autómatas","Requiere investigar Caballería en el Núcleo Central"]},
+  "Unidad de Nanoreparación":{extra:["Se entrena en el Portal Dimensional","Sanar: cura sola al aliado más herido cercano"]},
+  "Manipuladora Cuántica":{extra:["Se entrena en el Portal Dimensional","Ralentizar · Polimorfia · Invisibilidad"]},
+  "Disruptor de Escudos":{extra:["Se entrena en el Portal Dimensional","Robar Hechizos · Resistencia Mágica · Retroalimentación"]},
+  "General Voss":{rol:"Héroe enemigo",extra:["Granada: daño en área si tiene 3 o más de tus tropas cerca","Sube de nivel limpiando campamentos neutrales","Compra objetos al Mercader Errante y los usa en combate"]},
+  "Ingeniero de Campo":{rol:"Obrero enemigo",extra:["Mina cristal, pica metal de las rocas y construye la base de la Coalición","Al principio de la partida, uno sale a explorar tu base"]},
+  "Soldado de Asalto":{rol:"Infantería cuerpo a cuerpo",extra:["Se entrena en la Academia Militar"]},
+  "Francotirador":{rol:"Unidad a distancia",extra:["Alcance: 170","Huye cuando le queda poca vida"]},
+  "Exo-traje Pesado":{rol:"Unidad pesada",extra:["Lento pero muy resistente"]},
+  "Hacker de Combate":{rol:"Lanzador a distancia",extra:["Alcance: 260","Prefiere a las unidades que curan"]},
+  "Médico de Campo":{rol:"Unidad de apoyo",extra:["Cura a las tropas de la Coalición"]},
+  "Tanque Blindado":{rol:"Unidad de asedio pesada",extra:["Aparece si tienes torretas o Colosos"]},
+  "Comando de Élite":{rol:"Asesino",extra:["Ignora a tus soldados: va directo por tus obreros y edificios"]},
+  "Artillería Móvil":{rol:"Asedio a distancia",extra:["Alcance: 380","Aparece si tienes varias torretas"]},
+  "Academia Militar":{rol:"Cuartel enemigo"},"Torreta de Defensa":{rol:"Defensa enemiga"},"Depósito de Suministros":{rol:"Suministro enemigo"},
+  "Fábrica de Armamento":{rol:"Mejoras enemigas"},"Cuartel General":{rol:"Edificio principal enemigo"},
+  "Puesto del Mercader Errante":{rol:"Tienda neutral",extra:["Tu héroe compra aquí objetos con cristal"]},
+};
+function rolEnc(nombre,cat){
+  const d=ENC_DETALLE[nombre];if(d&&d.rol)return d.rol;
+  const b=ENC_EDIF_BOTON[nombre];if(b&&typeof DESCRIPCION_BOTONES!=="undefined"&&DESCRIPCION_BOTONES[b])return DESCRIPCION_BOTONES[b][0];
+  if(/Objetos/.test(cat))return "Objeto";
+  if(/Neutrales/.test(cat))return /mini-jefe/.test(ENC_STATS_ACTUAL)?"Mini-jefe neutral":"Criatura neutral";
+  return "";
+}
+let ENC_STATS_ACTUAL="";
+function datosChipsEnc(stats){
+  const out=[];let costo=[];
+  for(const p of String(stats||"").split(" · ").map(x=>x.trim()).filter(Boolean)){
+    if(/❤️/.test(p))out.push(["Vida",p.replace("❤️","").trim()]);
+    else if(/⚔️/.test(p))out.push(["Ataque",p.replace("⚔️","").trim()]);
+    else if(/🪙|🔩/.test(p)&&!/suelta/.test(p))costo.push(p);
+    else if(/suelta/.test(p))out.push(["Botín",p.replace("suelta","").trim()]);
+    else out.push(["",p]);
+  }
+  if(costo.length)out.splice(Math.min(2,out.length),0,["Costo",costo.join(" · ")]);
+  return out;
+}
+function animacionesEnc(arte){
+  if(!arte)return [];
+  if(typeof arte==="string")return [["Imagen",arte]];
+  const claves=Object.keys(ENC_NOMBRES_ANIM).filter(k=>arte[k]&&(typeof arte[k]==="string"||arte[k].sheet));
+  if(claves.length)return claves.map(k=>[ENC_NOMBRES_ANIM[k],arte[k]]);
+  if(arte.sheet)return [["Animación",arte]];
+  return [];
+}
+let _encAnimLoop=null;
+function abrirDetalleEnc(entrada,ficha){
+  const [nombre,arte,emoji,stats,descExtra]=entrada;
+  encElegido=nombre;ENC_STATS_ACTUAL=stats||"";
+  document.querySelectorAll("#enc-grilla .enc-ficha.elegida").forEach(e=>e.classList.remove("elegida"));
+  if(ficha)ficha.classList.add("elegida");
+  const cuerpo=document.getElementById("enc-cuerpo"),det=document.getElementById("enc-detalle");
+  cuerpo.classList.add("con-detalle");det.hidden=false;
+  // arriba: todas las animaciones, cada una moviéndose con su nombre
+  const caja=document.getElementById("enc-anims");caja.innerHTML="";
+  const anims=animacionesEnc(arte),lienzos=[];
+  if(!anims.length){caja.innerHTML=`<div style="font-size:64px;padding:18px 0;">${emoji||"❔"}</div>`;}
+  for(const [etq,clip] of anims){
+    const d=document.createElement("div");d.className="enc-anim";
+    const cv=document.createElement("canvas");cv.width=116;cv.height=116;
+    const n=typeof clip==="string"?1:(clip.count||1);
+    d.innerHTML=`<div class="enc-anim-nombre">${etq}</div>`;d.appendChild(cv);
+    const pie=document.createElement("div");pie.className="enc-anim-cuadros";pie.textContent=n>1?`${n} cuadros`:"imagen fija";d.appendChild(pie);
+    caja.appendChild(d);lienzos.push({cv,clip,src:typeof clip==="string"?clip:clip.sheet,n});
+  }
+  // abajo: la información
+  const cat=encCategoria||"",rol=rolEnc(nombre,cat),extra=(ENC_DETALLE[nombre]&&ENC_DETALLE[nombre].extra)||[];
+  const desc=ENCICLOPEDIA_TEXTOS[nombre]||descExtra||"";
+  const btn=ENC_EDIF_BOTON[nombre],uso=btn&&typeof DESCRIPCION_BOTONES!=="undefined"&&DESCRIPCION_BOTONES[btn]?DESCRIPCION_BOTONES[btn][1]:"";
+  document.getElementById("enc-info").innerHTML=
+    `<div class="enc-nombre">${fuenteLista.g?textoDibujado(nombre,"g",0.8):nombre}</div>`+
+    (rol?`<div class="enc-rol">${rol}</div>`:"")+
+    `<div class="enc-datos">${datosChipsEnc(stats).map(([k,v])=>`<div class="enc-dato">${k?`<b>${k}</b>`:""}${v}</div>`).join("")}</div>`+
+    (desc?`<div class="enc-desc">${desc}</div>`:"")+
+    (uso&&uso!==desc?`<div class="enc-desc" style="margin-top:6px;color:#3a2a06;font-weight:600;">${uso}</div>`:"")+
+    (extra.length?`<div class="enc-extra">${extra.map(x=>`<div>${x}</div>`).join("")}</div>`:"");
+  det.scrollTop=0;
+  // anima los lienzos mientras el panel esté abierto
+  if(_encAnimLoop)cancelAnimationFrame(_encAnimLoop);
+  const t0=performance.now();
+  const paso=()=>{
+    if(det.hidden||!document.getElementById("vista-enciclopedia").classList.contains("activa")){_encAnimLoop=null;return;}
+    const t=(performance.now()-t0)/1000;
+    for(const L of lienzos){
+      const img=getAnimImg(L.src);if(!imgLista(img))continue;
+      const g=L.cv.getContext("2d");g.imageSmoothingEnabled=false;g.clearRect(0,0,116,116);
+      let sx=0,sy=0,fw=img.naturalWidth,fh=img.naturalHeight;
+      if(typeof L.clip!=="string"){
+        fw=L.clip.frameW||img.naturalWidth/L.n;fh=L.clip.frameH||img.naturalHeight;
+        const lista=L.clip.cuadros,i=Math.floor(t*(L.clip.fps||6)*VELOCIDAD_ANIMACION);
+        sx=((lista&&lista.length?lista[i%lista.length]:i)%L.n)*fw;sy=(L.clip.fila||0)*fh;
+      }
+      const k=Math.min(108/fw,108/fh);
+      g.drawImage(img,sx,sy,fw,fh,(116-fw*k)/2,(116-fh*k)/2,fw*k,fh*k);
+    }
+    _encAnimLoop=requestAnimationFrame(paso);
+  };
+  paso();
+}
+function cerrarDetalleEnc(){
+  encElegido=null;
+  document.getElementById("enc-detalle").hidden=true;
+  document.getElementById("enc-cuerpo").classList.remove("con-detalle");
+  document.querySelectorAll("#enc-grilla .enc-ficha.elegida").forEach(e=>e.classList.remove("elegida"));
+}
 function refrescarEnciclopedia(){
+  {const x=document.getElementById("enc-cerrar");if(x&&!x._listo){x._listo=true;x.onclick=cerrarDetalleEnc;}}
   const datos=datosEnciclopedia(),cats=Object.keys(datos);
   if(!encCategoria||!datos[encCategoria])encCategoria=cats[0];
   const pest=document.getElementById("enc-pestanas");pest.innerHTML="";
-  for(const c of cats){const b=document.createElement("button");b.className="diff-btn"+(c===encCategoria?" active":"");if(fuenteLista.c)b.innerHTML=textoDibujado(c,"c",0.72);else b.textContent=c;b.onclick=()=>{encCategoria=c;refrescarEnciclopedia();};pest.appendChild(b);}
+  for(const c of cats){const b=document.createElement("button");b.className="diff-btn"+(c===encCategoria?" active":"");if(fuenteLista.c)b.innerHTML=textoDibujado(c,"c",0.72);else b.textContent=c;b.onclick=()=>{encCategoria=c;cerrarDetalleEnc();refrescarEnciclopedia();};pest.appendChild(b);}
   const g=document.getElementById("enc-grilla");g.innerHTML="";
   for(const [nombre,arte,emoji,stats,descExtra] of datos[encCategoria]){
-    const f=document.createElement("div");f.className="enc-ficha";
+    const f=document.createElement("div");f.className="enc-ficha"+(encElegido===nombre?" elegida":"");
+    f.tabIndex=0;f.onclick=()=>abrirDetalleEnc([nombre,arte,emoji,stats,descExtra],f);
+    f.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();f.click();}};
     f.appendChild(fichaDibujo(arte,emoji));
     const t=document.createElement("div");
     t.innerHTML=`<div class="enc-nombre">${fuenteLista.g?textoDibujado(nombre,"g",0.6):nombre}</div><div class="enc-stats">${stats}</div><div class="enc-desc">${ENCICLOPEDIA_TEXTOS[nombre]||descExtra||""}</div>`;
