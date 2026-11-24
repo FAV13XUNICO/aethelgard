@@ -5099,7 +5099,7 @@ canvas.addEventListener("mouseup",e=>{
       let aw=(selected&&selected.type==="worker")?selected:selectedUnits.find(u=>u.type==="worker");
       if(aw&&gold>=currentBuildStructure.cost&&lumber>=(currentBuildStructure.lumberCost||0)){
         gold-=currentBuildStructure.cost;lumber-=(currentBuildStructure.lumberCost||0);
-        let ns={type:currentBuildStructure.type,name:currentBuildStructure.name,cost:currentBuildStructure.cost,x:sp.x,y:sp.y,size:currentBuildStructure.size,hp:1,maxHp:currentBuildStructure.hp,isUnderConstruction:true,progress:0,trainingProgress:0,queue:[],team:"player",tier:currentBuildStructure.type==="base"?1:undefined};
+        let ns={type:currentBuildStructure.type,name:currentBuildStructure.name,cost:currentBuildStructure.cost,x:sp.x,y:sp.y,size:currentBuildStructure.size,hp:1,maxHp:currentBuildStructure.hp,isUnderConstruction:true,progress:0,_sinEmpezar:true,trainingProgress:0,queue:[],team:"player",tier:currentBuildStructure.type==="base"?1:undefined};
         if(ns.type==="base"||ns.type==="barracks"||ns.type==="altar"||ns.type==="sanctuary"){ns.rallyX=ns.x+ns.size/2;ns.rallyY=ns.y+ns.size+40;}
         structures.push(ns);scoreBuildingsBuilt++;
         commandUnit(aw,{type:"build",structure:ns},e.shiftKey);
@@ -5247,7 +5247,7 @@ function salirDeMina(w,base){
 // ── Construir como los orcos de Warcraft III: el obrero se mete en la obra y
 // desaparece; sale cuando el edificio está listo (o si lo cancelas / lo destruyen).
 function entrarEnObra(w,t){
-  w.hidden=true;w._enObra=t;w._paso=null;
+  w.hidden=true;w._enObra=t;w._paso=null;if(t)t._sinEmpezar=false;
   if(selectedUnits.includes(w)){selectedUnits=selectedUnits.filter(u=>u!==w);if(selected===w)selected=selectedUnits[0]||null;try{updateBottomUI();}catch(e){}}
   collisionGridDirty=true;
 }
@@ -6991,10 +6991,11 @@ function draw(){
       ctx.fillStyle="rgba(0,0,0,0.3)";ctx.beginPath();ctx.ellipse(p.x,p.y+str.size*0.4,str.size*0.75,str.size*0.3,0,0,Math.PI*2);ctx.fill();
       if(isSel){ctx.strokeStyle="rgba(255,215,0,0.7)";ctx.lineWidth=3;ctx.strokeRect(ox-3,oy-3,str.size+6,str.size+6);}
       dibujarAvisoEnVista(str,p.x,p.y+str.size*0.4,str.size*0.85,str.size*0.36);
-      if(str._sinEmpezar){ // cimientos marcados: todavía no llegó nadie a construir
-        const e=[worldToIso(str.x,str.y),worldToIso(str.x+str.size,str.y),worldToIso(str.x+str.size,str.y+str.size),worldToIso(str.x,str.y+str.size)];
-        ctx.save();ctx.setLineDash([6,5]);ctx.lineWidth=2;ctx.strokeStyle=str.team==="enemy"?"rgba(255,120,80,0.8)":"rgba(218,165,32,0.8)";ctx.fillStyle="rgba(0,0,0,0.12)";
-        ctx.beginPath();ctx.moveTo(e[0].x,e[0].y);for(let k=1;k<4;k++)ctx.lineTo(e[k].x,e[k].y);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+      if(str._sinEmpezar){ // todavía no llegó el obrero: el edificio entero, transparente, sin animación ni %
+        ctx.save();ctx.globalAlpha=0.35;
+        const hs=drawStructureSprite(str,p);
+        if(!hs)drawStructureShape(ctx,{...str,x:ox,y:oy},fc);
+        ctx.restore();
         return;
       }
       // en obra: tu animación de construcción; si no hay, el edificio transparente + andamio
@@ -7002,8 +7003,11 @@ function draw(){
       let hasSpr;
       if(str.isUnderConstruction){
         hasSpr=dibujarEdificioPorEtapas(str,p,ox,oy,fc);
-        const frObra=frameConstruccion(str);
-        if(frObra){const W=frObra.drawW||str.size*1.45;drawAnimFrame(frObra,p.x,p.y-str.size*0.12+(frObra.offY||0),W,0.5);}
+        // la animación de obra solo corre mientras hay un obrero adentro trabajando (si no, queda en pausa)
+        const trabajando=str.team==="enemy"?aiWorkers.some(w=>w.state==="building_ai"&&w.targetBuild===str):workers.some(w=>w._enObra===str&&w.state==="building");
+        const frObra=trabajando?frameConstruccion(str):null;
+        if(!trabajando){}
+        else if(frObra){const W=frObra.drawW||str.size*1.45;drawAnimFrame(frObra,p.x,p.y-str.size*0.12+(frObra.offY||0),W,0.5);}
         else dibujarAndamio(str,p);
       }else{
         hasSpr=drawStructureSprite(str,p);
