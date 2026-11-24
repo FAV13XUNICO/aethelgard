@@ -242,6 +242,8 @@ canvas{display:block;}
   border-right:4px solid #3a3018;
   box-shadow:inset -2px 0 4px rgba(0,0,0,.5),4px 0 0 #6a5828;
 }
+body.cursor-juego :is(#map-wrapper,#top-bar,#hero-icon,#control-group-bar,#idle-worker-icon,#hud,#alert-box),
+body.cursor-juego :is(#map-wrapper,#top-bar,#hero-icon,#control-group-bar,#idle-worker-icon,#hud,#alert-box) *{cursor:var(--cursor-juego,default)!important;}
 #minimap{width:204px;height:140px;flex:none;display:block;cursor:crosshair;margin-top:4px;}
 #minimap-buttons{
   height:22px;display:flex;align-items:center;justify-content:center;
@@ -2342,8 +2344,21 @@ function cssCursor(clave){
   const sistema=CURSOR_SISTEMA[clave]||"default";
   if(!e)return sistema;
   const src=typeof e==="string"?e:e.img,x=typeof e==="string"?0:(e.x||0),y=typeof e==="string"?0:(e.y||0);
-  return `url("${rutaArte(src)}") ${x} ${y}, ${sistema}`;
+  return `url("${CURSOR_DATOS[src]||rutaArte(src)}") ${x} ${y}, ${sistema}`;
 }
+// Los cursores se cargan UNA vez al inicio y se guardan dentro de la página (data:):
+// así al cambiar de cursor el navegador no tiene que ir a buscar el PNG y nunca se ve
+// por un instante la flecha normal de Windows.
+const CURSOR_DATOS={};
+(function precargarCursores(){
+  const archivos=new Set(Object.values(ARTE_CURSORES).filter(Boolean).map(e=>typeof e==="string"?e:e.img));
+  for(const f of archivos){
+    const im=new Image();
+    im.onload=()=>{try{const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;
+      c.getContext("2d").drawImage(im,0,0);CURSOR_DATOS[f]=c.toDataURL("image/png");cursorActual="";}catch(e){} };
+    im.src=rutaArte(f);
+  }
+})();
 let cursorActual="",mouseSobreMapa=false,mouseCX=0,mouseCY=0;
 canvas.addEventListener("mousemove",e=>{mouseSobreMapa=true;mouseCX=e.clientX;mouseCY=e.clientY;});
 canvas.addEventListener("mouseleave",()=>{mouseSobreMapa=false;});
@@ -2372,7 +2387,9 @@ function actualizarCursor(){
     if(c)clave=(c.enemigo&&selectedUnits.some(u=>u.type==="soldier"))?"atacar":"seleccionar";
   }
   const css=cssCursor(clave);
-  if(css!==cursorActual){cursorActual=css;document.body.style.cursor=css;canvas.style.cursor=css;}
+  if(css!==cursorActual){cursorActual=css;document.body.style.cursor=css;canvas.style.cursor=css;
+    // el mismo cursor sobre el HUD y sus botones (antes ahí salía la manito normal del navegador)
+    document.body.style.setProperty("--cursor-juego",css);document.body.classList.add("cursor-juego");}
 }
 
 // ═══════════════ ATAJOS DE TECLADO (estilo Warcraft 3) ═══════════════
