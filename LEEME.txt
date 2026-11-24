@@ -1,0 +1,35 @@
+AETHELGARD
+==========
+
+Para jugar: abre  juego/Aethelgard.html  con el navegador (Chrome o Edge).
+
+Carpetas:
+  juego/   -> el juego (Aethelgard.html)
+  arte/    -> todos los dibujos (PNG)
+  musica/  -> la música
+  aethelgard_icono.png -> el ícono del juego (el que sale en la pestaña del navegador)
+
+Para agregar un dibujo nuevo: guárdalo en "arte" y escribe solo su nombre
+(por ejemplo "obrero.png") en su casilla del APARTADO DE ARTE, al principio
+del código de Aethelgard.html.
+
+Para agregar música: guárdala en "musica" y escribe su nombre en MUSICA
+(en el mismo apartado).
+
+No cambies los nombres de las carpetas ni las separes: el juego busca los
+dibujos en ../arte/ y la música en ../musica/ (eso se puede cambiar en
+RUTA_ARTE y RUTA_MUSICA, dentro del código).
+
+IMPORTANTE PARA PUBLICARLO EN INTERNET (Netlify u otro servidor):
+  - Los servidores web SÍ distinguen mayúsculas de minúsculas (Windows no).
+    El nombre escrito en el código tiene que ser EXACTAMENTE igual al del
+    archivo. Regla del proyecto: todo en minúsculas, y las hojas de sprites
+    terminan en "-sheet.png" (con "s" minúscula), por ejemplo
+    "paladin_alien-sheet.png".
+  - El archivo netlify.toml (al lado de la carpeta "aethelgard") publica esta
+    carpeta y manda la página principal del sitio a /juego/.
+  - Si falta un dibujo o una canción, el juego no se rompe: dibuja una figura
+    de reemplazo y sigue. Aparecerán cuando agregues el archivo con su nombre
+    exacto (pendientes por ahora: cursor.png, retrato-sheet.png, tema1.mp3,
+    tema2.mp3, y otras casillas que estén vacías o de ejemplo).
+  - El .zip no se sube al sitio: es solo para copiar el proyecto.
