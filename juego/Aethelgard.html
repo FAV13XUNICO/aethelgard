@@ -406,6 +406,8 @@ body.cursor-juego :is(#map-wrapper,#top-bar,#hero-icon,#control-group-bar,#idle-
 .inv-slot.inv-lleno{border-color:#8a6a2a;}
 .inv-slot .obj-emoji{font-size:20px;line-height:1;}
 .inv-slot .obj-img{width:32px;height:32px;object-fit:contain;display:block;}
+.obj-tira{display:block;background-repeat:no-repeat;image-rendering:pixelated;}
+.btn-icon .obj-tira{width:34px;height:34px;}
 .btn-objeto .obj-emoji{font-size:24px;line-height:1;}
 .btn-objeto .btn-hotkey{color:#ffe9a0;}
 .btn-objeto.obj-no{opacity:.5;filter:grayscale(.6);}
@@ -843,21 +845,28 @@ const ARTE_UNIDADES={
   sacerdote:     {idle:{sheet:"alien_curandero.png",count:3,fps:4,drawW:70,offY:9,offX:-1},
                   walk:{sheet:"curandero_67_caminando_en_sweet.png",count:8,fps:10,drawW:70,offY:7},
                   habilidad:{sheet:"mago_haciendo_magia.png",count:5,fps:9,drawW:62,offY:7,offX:1}},       // Unidad de Nanoreparación (habilidad = al sanar o disipar)
-  hechicera:     {idle:{sheet:"idle_del_mago_alien-sheet.png",count:5,fps:5,drawW:75,offY:13,offX:3},
-                  walk:{sheet:"alien_mago.png",count:7,fps:9,drawW:75,offY:13,offX:7}},               // Manipuladora Cuántica
+  hechicera:     {idle:{sheet:"manipuladora_cuantica-sheet.png",fila:0,count:5,frameW:100,frameH:100,fps:5,drawW:75,offY:13,offX:3},
+                  walk:{sheet:"manipuladora_cuantica-sheet.png",fila:1,count:7,frameW:100,frameH:100,fps:9,drawW:75,offY:13,offX:7},
+                  habilidad:{sheet:"manipuladora_cuantica-sheet.png",fila:2,count:5,frameW:100,frameH:100,fps:9,drawW:75,offY:14,offX:3}}, // Manipuladora Cuántica (filas: quieta · caminando · haciendo magia)
   rompehechizos: "",   // Disruptor de Escudos
   // — Coalición Terrestre (IA) —
   heroe_enemigo:     {sheet:"astronauta_paladin-sheet.png",count:7,fps:7,drawW:96,offY:16,offX:6},   // General Voss (antes era el dibujo del Exo-traje Pesado)
-  obrero_enemigo:    {idle:{sheet:"obrero_humano-sheet.png",count:3,cuadros:[0],drawW:72,offY:13,offX:4},
-                      work:{sheet:"obrero_humano-sheet.png",count:3,fps:6,drawW:72,offY:13,offX:4}},   // Ingeniero de Campo (work = picando / construyendo)
+  obrero_enemigo:    {idle:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,cuadros:[0],drawW:72,offY:13,offX:4},
+                      work:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,fps:6,drawW:72,offY:13,offX:4},
+                      walk:{sheet:"ingeniero_campo-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:11,drawW:72,offY:13,offX:4}},   // Ingeniero de Campo (fila 0 picando, fila 1 caminando)
   enemigo_bruto:     {sheet:"astronata_combate-sheet.png",count:4,fps:6,drawW:75,offY:13,offX:-3},   // Soldado de Asalto
   enemigo_cazador:   {idle:  {sheet:"arquero_disparando_en_png_astronauta.png",count:14,cuadros:[0],drawW:80,offY:15,offX:4},
                       attack:{sheet:"arquero_disparando_en_png_astronauta.png",count:14,fps:16,disparoEn:7,drawW:80,offY:15,offX:4}}, // Francotirador
-  enemigo_trol:      {sheet:"exo_traje_pesado_idle.png",count:6,fps:6,drawW:90,offY:19,offX:5},  // Exo-traje Pesado (el grandote del cañón)
-  enemigo_mago:      {sheet:"robot_malo.png",count:5,fps:7,drawW:80,offY:15,offX:3},   // Hacker de Combate (el robot que antes era el Francotirador)
+  enemigo_trol:      {idle:  {sheet:"exo_traje_pesado-sheet.png",fila:0,count:6,frameW:100,frameH:100,fps:6,drawW:90,offY:19,offX:5},
+                      attack:{sheet:"exo_traje_pesado-sheet.png",fila:1,count:11,frameW:100,frameH:100,fps:15,disparoEn:8,drawW:73,offY:4,offX:-15}},  // Exo-traje Pesado (fila 0 quieto, fila 1 martillazo)
+  enemigo_mago:      {sheet:"hacker_combate-sheet.png",count:8,fps:7,drawW:72,offY:13,offX:4},   // Hacker de Combate (el mago humano astronauta)
   enemigo_bestia:    "",   // Tanque Blindado
-  enemigo_asesino:   "",   // Comando de Élite
-  enemigo_chaman:    "",   // Médico de Campo
+  enemigo_asesino:   {idle:  {sheet:"comando_elite-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:72,offY:15,offX:6},
+                      walk:  {sheet:"comando_elite-sheet.png",fila:1,count:5,frameW:100,frameH:100,fps:13,drawW:72,offY:15,offX:9},
+                      attack:{sheet:"comando_elite-sheet.png",fila:2,count:8,frameW:100,frameH:100,fps:18,disparoEn:2,drawW:72,offY:14,offX:9}},   // Comando de Élite (filas: quieto · corriendo · espadazo)
+  enemigo_chaman:    {idle:     {sheet:"medico_campo-sheet.png",fila:0,count:7,frameW:100,frameH:100,cuadros:[0],drawW:72,offY:14,offX:7},
+                      walk:     {sheet:"medico_campo-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:10,drawW:72,offY:14,offX:7},
+                      habilidad:{sheet:"medico_campo-sheet.png",fila:1,count:4,frameW:100,frameH:100,fps:8,drawW:72,offY:14,offX:5}},   // Médico de Campo (fila 0 caminando, fila 1 curando)
   enemigo_catapulta: "",   // Artillería Móvil
   // — Neutrales —
   jabali:    "",   // Reptante Nativo
@@ -882,7 +891,8 @@ const ARTE_ESTRUCTURAS={
   barracks_enemigo: {sheet:"castillo_para_paladines.png",count:10,fps:8,drawW:255,offY:79,offX:11},  // Academia Militar
   tower_enemigo:    "",   // Torreta de Defensa
   farm_enemigo:     "",   // Depósito de Suministros
-  forge_enemigo:    {sheet:"casa_de_jipies_magos_png_67.png",count:3,fps:3,drawW:292,offY:98,offX:14}, // Fábrica de Armamento
+  forge_enemigo:    {sheet:"fabrica_armamento-sheet.png",count:3,fps:3,drawW:209,offY:43,offX:2}, // Fábrica de Armamento (la forja de ladrillo)
+  // sin usar por ahora: casa_de_jipies_magos_png_67.png (la casa verde de los magos), robot_malo.png
 };
 
 const ARTE_ESCENARIO={
@@ -905,8 +915,17 @@ const ARTE_ESTRUCTURAS_NEUTRALES={
 // ── OBJETOS ── (íconos del inventario, de la tienda y del objeto tirado en el piso)
 // "archivo.png" o una tira {sheet,...} (la tira solo se anima en el piso). Cuadrados, ej. 64x64.
 const ARTE_OBJETOS={
-  celula_vida:"", cristal_mana:"", baliza_retorno:"", granada_pulso:"", hoja_plasma:"",
-  placa_blindaje:"", botas_antigrav:"", nucleo_regen:"", amuleto_cuantico:"", corona_titan:"",
+  // todos en objetos.png, uno al lado del otro: cuadro = posición (0 = el primero de la izquierda)
+  celula_vida:     {sheet:"objetos.png",count:10,cuadro:0,drawW:30},
+  cristal_mana:    {sheet:"objetos.png",count:10,cuadro:1,drawW:30},
+  baliza_retorno:  {sheet:"objetos.png",count:10,cuadro:2,drawW:30},
+  granada_pulso:   {sheet:"objetos.png",count:10,cuadro:3,drawW:30},
+  hoja_plasma:     {sheet:"objetos.png",count:10,cuadro:4,drawW:30},
+  placa_blindaje:  {sheet:"objetos.png",count:10,cuadro:5,drawW:30},
+  botas_antigrav:  {sheet:"objetos.png",count:10,cuadro:6,drawW:30},
+  nucleo_regen:    {sheet:"objetos.png",count:10,cuadro:7,drawW:30},
+  amuleto_cuantico:{sheet:"objetos.png",count:10,cuadro:8,drawW:30},
+  corona_titan:    {sheet:"objetos.png",count:10,cuadro:9,drawW:30},
 };
 
 // Botones del panel: la clave es el id del botón. Solo imagen fija (PNG cuadrado,
@@ -1568,7 +1587,7 @@ function fichaDibujo(entrada,emoji){
   const img=getAnimImg(src);
   const pintar=()=>{if(!imgLista(img))return;const n=e.count||1,fw=e.frameW||img.naturalWidth/n,fh=e.frameH||img.naturalHeight;
     const c=document.createElement("canvas");c.width=64;c.height=64;const g=c.getContext("2d");g.imageSmoothingEnabled=false;
-    const k=Math.min(64/fw,64/fh);g.drawImage(img,0,(e.fila||0)*fh,fw,fh,(64-fw*k)/2,(64-fh*k)/2,fw*k,fh*k);caja.textContent="";caja.appendChild(c);};
+    const k=Math.min(64/fw,64/fh);g.drawImage(img,(e.cuadro!=null?e.cuadro:(e.cuadros&&e.cuadros[0])||0)*fw,(e.fila||0)*fh,fw,fh,(64-fw*k)/2,(64-fh*k)/2,fw*k,fh*k);caja.textContent="";caja.appendChild(c);};
   if(imgLista(img))pintar();else img.addEventListener("load",pintar,{once:true});
   return caja;
 }
@@ -1680,7 +1699,7 @@ function abrirDetalleEnc(entrada,ficha){
   for(const [etq,clip] of anims){
     const d=document.createElement("div");d.className="enc-anim";
     const cv=document.createElement("canvas");cv.width=116;cv.height=116;
-    const n=typeof clip==="string"?1:(clip.count||1);
+    const n=typeof clip==="string"||clip.cuadro!=null?1:((clip.cuadros||[]).length||clip.count||1);
     d.innerHTML=`<div class="enc-anim-nombre">${etq}</div>`;d.appendChild(cv);
     const pie=document.createElement("div");pie.className="enc-anim-cuadros";pie.textContent=n>1?`${n} cuadros`:"imagen fija";d.appendChild(pie);
     caja.appendChild(d);lienzos.push({cv,clip,src:typeof clip==="string"?clip:clip.sheet,n});
@@ -1709,7 +1728,7 @@ function abrirDetalleEnc(entrada,ficha){
       let sx=0,sy=0,fw=img.naturalWidth,fh=img.naturalHeight;
       if(typeof L.clip!=="string"){
         fw=L.clip.frameW||img.naturalWidth/L.n;fh=L.clip.frameH||img.naturalHeight;
-        const lista=L.clip.cuadros,i=Math.floor(t*(L.clip.fps||6)*VELOCIDAD_ANIMACION);
+        const lista=L.clip.cuadro!=null?[L.clip.cuadro]:L.clip.cuadros,i=Math.floor(t*(L.clip.fps||6)*VELOCIDAD_ANIMACION);
         sx=((lista&&lista.length?lista[i%lista.length]:i)%L.n)*fw;sy=(L.clip.fila||0)*fh;
       }
       const k=Math.min(108/fw,108/fh);
@@ -3001,7 +3020,7 @@ function sceneryFrame(entry){
   const img=getAnimImg(entry.sheet);
   if(!imgLista(img))return null;
   const n=entry.count||1,fw=entry.frameW||img.naturalWidth/n,fh=entry.frameH||img.naturalHeight;
-  const i=Math.floor(performance.now()/1000*(entry.fps||4)*VELOCIDAD_ANIMACION)%n;
+  const i=entry.cuadro!=null?entry.cuadro%n:Math.floor(performance.now()/1000*(entry.fps||4)*VELOCIDAD_ANIMACION)%n;
   return {img,sx:i*fw,sy:(entry.fila||0)*fh,sw:fw,sh:fh,flip:false,drawW:entry.drawW,offY:entry.offY||0,offX:entry.offX||0};
 }
 // Dibuja el frame centrado en x=cx con `width` px de ancho (el alto respeta la
@@ -4480,6 +4499,10 @@ function actualizarObjetos(dt){
 function iconoObjetoHTML(id){
   const o=OBJETOS[id],src=ARTE_OBJETOS[id];
   if(!src)return `<span class="obj-emoji">${o.icono}</span>`;
+  if(typeof src==="object"){ // un cuadro de una tira (objetos.png)
+    const n=src.count||1,i=src.cuadro||0;
+    return `<span class="obj-img obj-tira" role="img" aria-label="${o.nombre}" style="background-image:url('${rutaArte(src.sheet)}');background-size:${n*100}% 100%;background-position:${n>1?i/(n-1)*100:0}% 0"></span>`;
+  }
   return `<img src="${rutaArte(src)}" alt="" class="obj-img" onerror="this.outerHTML='<span class=&quot;obj-emoji&quot;>${o.icono}</span>'">`;
 }
 function dibujarObjetoSuelo(ob){
@@ -5781,21 +5804,21 @@ function processSanctuaryUnits(){
       if((s.slowTimer||0)<=0){
         let target=null,md=Infinity;
         for(let en of enemies){if(en.hp<=0||en.slowed)continue;const d=Math.hypot(en.x-s.x,en.y-s.y);if(d<240&&d<md){md=d;target=en;}}
-        if(target){target.slowed=true;target._baseSpeed=target._baseSpeed||target.speed;target.speed=target._baseSpeed*0.5;target.slowTimeLeft=240;s.slowTimer=180;}
+        if(target){target.slowed=true;target._baseSpeed=target._baseSpeed||target.speed;target.speed=target._baseSpeed*0.5;target.slowTimeLeft=240;s.slowTimer=180;animarHabilidad(s);mirarHacia(s,target);}
         else s.slowTimer=40;
       } else s.slowTimer--;
       // Polimorfia (no afecta al héroe orco: sería demasiado fácil neutralizarlo)
       if((s.polyTimer||0)<=0){
         let target=null,md=Infinity;
         for(let en of enemies){if(en.hp<=0||en.polymorphed||en.isHero)continue;const d=Math.hypot(en.x-s.x,en.y-s.y);if(d<220&&d<md){md=d;target=en;}}
-        if(target){target.polymorphed=true;target.polyTimeLeft=300;target._prevDamage=target._prevDamage!=null?target._prevDamage:target.damage;target.damage=0;s.polyTimer=500;triggerAlert("🐑 ¡Polimorfia!","#ff88ff",300);}
+        if(target){animarHabilidad(s);mirarHacia(s,target);target.polymorphed=true;target.polyTimeLeft=300;target._prevDamage=target._prevDamage!=null?target._prevDamage:target.damage;target.damage=0;s.polyTimer=500;triggerAlert("🐑 ¡Polimorfia!","#ff88ff",300);}
         else s.polyTimer=60;
       } else s.polyTimer--;
       // Invisibilidad al aliado más herido cercano
       if((s.invisTimer||0)<=0){
         let target=null,lowestPct=1;
         for(let ally of soldiers){if(ally===s||ally.hp<=0||ally.invisible)continue;const d=Math.hypot(ally.x-s.x,ally.y-s.y);if(d<200){const pct=ally.hp/ally.maxHp;if(pct<lowestPct){lowestPct=pct;target=ally;}}}
-        if(target&&lowestPct<0.6){target.invisible=true;target.invisTimeLeft=360;s.invisTimer=600;triggerAlert("👻 Invisibilidad aplicada","#88ccff",300);}
+        if(target&&lowestPct<0.6){target.invisible=true;target.invisTimeLeft=360;s.invisTimer=600;animarHabilidad(s);mirarHacia(s,target);triggerAlert("👻 Invisibilidad aplicada","#88ccff",300);}
         else s.invisTimer=60;
       } else s.invisTimer--;
     }
@@ -6925,7 +6948,7 @@ function update(dt){
             // Partícula verde de curación
             for(let i=0;i<5;i++)particles.push(fx({x:healTgt.x+(Math.random()-0.5)*20,y:healTgt.y+(Math.random()-0.5)*20,vx:(Math.random()-0.5)*1.5,vy:-Math.random()*2-0.5,life:1,r:3,color:"#44ffaa"}));
             floatingTexts.push(fx({x:healTgt.x,y:healTgt.y-20,text:`+${healAmt}`,life:1,vy:-1.2,color:"#44ffaa"}));
-            en.healTimer=90;
+            en.healTimer=90;animarHabilidad(en);mirarHacia(en,healTgt);
           } else {en.healTimer=30;}
         } else {en.healTimer--;}
       }
