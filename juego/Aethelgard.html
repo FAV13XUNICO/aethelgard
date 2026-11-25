@@ -869,9 +869,11 @@ const ARTE_UNIDADES={
                       habilidad:{sheet:"medico_campo-sheet.png",fila:1,count:4,frameW:100,frameH:100,fps:8,drawW:72,offY:14,offX:5}},   // Médico de Campo (fila 0 caminando, fila 1 curando)
   enemigo_catapulta: "",   // Artillería Móvil
   // — Neutrales —
-  jabali:    "",   // Reptante Nativo
+  jabali:    {idle:  {sheet:"reptante_infectado-sheet.png",fila:0,count:5,frameW:100,frameH:100,fps:6,drawW:72,offY:14,offX:3},
+              walk:  {sheet:"reptante_infectado-sheet.png",fila:1,count:7,frameW:100,frameH:100,fps:10,drawW:72,offY:15,offX:-1},
+              attack:{sheet:"reptante_infectado-sheet.png",fila:2,count:7,frameW:100,frameH:100,fps:14,disparoEn:3,drawW:72,offY:16,offX:2}},   // Reptante Infectado (filas: quieto · caminando · atacando)
   lobo:      "",   // Depredador Veloz
-  oso:       "",   // Bestia Blindada
+  oso:       {sheet:"slime_blindado-sheet.png",count:4,fps:6,drawW:90,offY:9,offX:-1},   // Slime Blindado
   ogro_jefe: "",   // Titán de la Jungla (mini-jefe)
 };
 
@@ -909,7 +911,7 @@ const ARTE_ESCENARIO={
 // ── ESTRUCTURAS NEUTRALES (no son de nadie) ──
 // Mismos 3 formatos que los edificios. drawW por defecto = ancho de la huella.
 const ARTE_ESTRUCTURAS_NEUTRALES={
-  tienda: "",   // Puesto del Mercader Errante (centro del mapa, 2x2)
+  tienda: {sheet:"tienda-sheet.png",count:3,fps:4,drawW:191,offY:40,offX:0},   // Puesto del Mercader Errante (centro del mapa, 2x2)
 };
 
 // ── OBJETOS ── (íconos del inventario, de la tienda y del objeto tirado en el piso)
@@ -1065,7 +1067,7 @@ const ARTE_RETRATOS={
   // ── Coalición Terrestre (estructuras de la IA) ──
   "Cuartel General":"", "Academia Militar":"", "Fábrica de Armamento":"", "Torreta de Defensa":"", "Depósito de Suministros":"",
   // ── Neutrales ──
-  "Reptante Nativo":"", "Depredador Veloz":"", "Bestia Blindada":"", "Titán de la Jungla":"",
+  "Reptante Infectado":"", "Depredador Veloz":"", "Slime Blindado":"", "Titán de la Jungla":"",
   "Puesto del Mercader Errante":"",
 };
 // ── MÚSICA ── (archivos .mp3/.ogg/.wav en la misma carpeta que este HTML)
@@ -1144,9 +1146,9 @@ const ENCICLOPEDIA_TEXTOS={
   "Torreta de Defensa":"Las torres humanas que protegen sus bases.",
   "Depósito de Suministros":"Le permite a la Coalición tener más tropas.",
   "Fábrica de Armamento":"Investiga el armamento mejorado de la Coalición.",
-  "Reptante Nativo":"Criatura del planeta que defiende su territorio.",
+  "Reptante Infectado":"Criatura nativa contaminada por la infección: ataca a todo lo que entra en su territorio.",
   "Depredador Veloz":"Caza en manada y ataca rápido.",
-  "Bestia Blindada":"Lenta, pero con un caparazón muy duro.",
+  "Slime Blindado":"Un slime metido dentro de una armadura vieja: lento, pero con un caparazón muy duro.",
   "Titán de la Jungla":"El mini-jefe del centro del mapa. Suelta muy buen botín.",
   "Puesto del Mercader Errante":"La tienda neutral del centro: aquí el héroe compra y vende objetos.",
 };
@@ -3581,9 +3583,9 @@ const aiWorkers=[];
 // campamento; "boss" (opcional) hace que además aparezca un mini-jefe en el
 // centro del campamento, con mucha más vida y mejor botín al morir.
 const NEUTRAL_TYPES={
-  jabali:{name:"Reptante Nativo",  hp:80, damage:9, speed:1.6,radius:12,aggro:170,leash:260,cooldown:55,goldReward:15,icon:"🐗",sprite:"jabali",shape:"hex"},
+  jabali:{name:"Reptante Infectado",  hp:80, damage:9, speed:1.6,radius:12,aggro:170,leash:260,cooldown:55,goldReward:15,icon:"🐗",sprite:"jabali",shape:"hex"},
   lobo:  {name:"Depredador Veloz", hp:55, damage:12,speed:2.3,radius:11,aggro:210,leash:280,cooldown:40,goldReward:18,icon:"🐺",sprite:"lobo",  shape:"hex"},
-  oso:   {name:"Bestia Blindada",  hp:170,damage:17,speed:1.3,radius:15,aggro:150,leash:220,cooldown:65,goldReward:28,icon:"🐻",sprite:"oso",   shape:"hex"},
+  oso:   {name:"Slime Blindado",  hp:170,damage:17,speed:1.3,radius:15,aggro:150,leash:220,cooldown:65,goldReward:28,icon:"🐻",sprite:"oso",   shape:"hex"},
 };
 const MINIBOSS_TYPES={
   ogro_jefe:{name:"Titán de la Jungla",hp:900,damage:34,speed:1.1,radius:20,aggro:230,leash:200,cooldown:70,goldReward:150,bonusLumber:80,icon:"👹",sprite:"ogro_jefe",shape:"star",isBoss:true},
@@ -4865,7 +4867,7 @@ function snapBuildPos(centerX,centerY,size){
 }
 
 // ═══════════════ UI FUNCTIONS ═══════════════
-const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Cuartel General":"💀","Academia Militar":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Nativo":"🐗","Depredador Veloz":"🐺","Bestia Blindada":"🐻","Titán de la Jungla":"👹","Puesto del Mercader Errante":"🛒"};
+const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Cuartel General":"💀","Academia Militar":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Infectado":"🐗","Depredador Veloz":"🐺","Slime Blindado":"🐻","Titán de la Jungla":"👹","Puesto del Mercader Errante":"🛒"};
 
 function renderQueue(str){queueBox.innerHTML="";if(!str.queue||str.queue.length===0)return;str.queue.forEach((item,i)=>{let sl=document.createElement("div");sl.className="queue-slot";sl.textContent=item.name;sl.onclick=ev=>{ev.stopPropagation();cancelQueueItem(str,i);};queueBox.appendChild(sl);});}
 function cancelQueueItem(str,i){let c=str.queue.splice(i,1)[0];gold+=c.goldCost||0;lumber+=c.lumberCost||0;if(i===0)str.trainingProgress=0;updateBottomUI();}
