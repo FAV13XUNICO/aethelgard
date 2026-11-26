@@ -49,6 +49,26 @@ body{overflow:hidden;background:#050403;font-family:'Cinzel','Times New Roman',s
 .splash-desc{max-width:520px;text-align:center;color:#bfb293;font-size:clamp(11px,1.4vw,13px);line-height:1.7;letter-spacing:.5px;}
 /* mientras cargan los dibujos del menú no se muestra la versión de texto (evita el parpadeo) */
 body.cargando-menu .splash-content{opacity:0;}
+/* ── intro (estudio → título → menú) ── */
+#intro{position:fixed;inset:0;z-index:20000;cursor:pointer;}
+#intro.fuera{opacity:0;pointer-events:none;transition:opacity .6s ease-out;}
+#intro-negro{position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .9s ease-in-out;}
+#intro-negro.fuera{opacity:0;pointer-events:none;}
+#intro-estudio{display:flex;align-items:center;gap:22px;opacity:0;transition:opacity .9s ease-in-out;}
+#intro-estudio.ver{opacity:1;}
+#intro-estudio img{height:min(18vh,150px);image-rendering:pixelated;}
+#intro-estudio .txt-comun{font:700 clamp(28px,5vw,56px) 'Cinzel',serif;color:#fff;letter-spacing:4px;}
+#intro-titulo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7vh;opacity:0;transition:opacity 1.2s ease-out;}
+#intro-titulo.ver{opacity:1;}
+#intro-logo img{width:min(80vw,960px);image-rendering:pixelated;display:block;animation:intro-flota 4.5s ease-in-out infinite;filter:drop-shadow(0 6px 18px rgba(0,0,0,.6));}
+#intro-logo .txt-comun{font:700 clamp(40px,9vw,110px) 'Cinzel',serif;color:#cfe0f5;letter-spacing:8px;}
+#intro-presiona{animation:intro-parpadeo 1.6s ease-in-out infinite;}
+#intro-presiona .txt-comun{font:600 clamp(14px,2vw,20px) 'Cinzel',serif;color:#fff;letter-spacing:3px;}
+@keyframes intro-flota{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+@keyframes intro-parpadeo{0%,100%{opacity:1;}50%{opacity:.25;}}
+body.en-intro .splash-content{opacity:0!important;pointer-events:none!important;}
+body.en-intro #carga-inicial{display:none;}
+@media (prefers-reduced-motion:reduce){#intro-logo img,#intro-presiona{animation:none;}}
 .splash-content{transition:opacity .35s ease-out;}
 #carga-inicial{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);z-index:11;font:12px 'Cinzel',serif;letter-spacing:3px;color:#8fa0b4;pointer-events:none;transition:opacity .3s;}
 body:not(.cargando-menu) #carga-inicial{opacity:0;}
@@ -528,7 +548,11 @@ body.sin-teclas .btn-hotkey{display:none!important;}
 .hud-corner{position:absolute;top:-7px;width:14px;height:14px;background:var(--gold);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);z-index:11;box-shadow:0 0 6px rgba(200,168,75,.4);}
 </style>
 </head>
-<body class="cargando-menu">
+<body class="cargando-menu en-intro">
+<div id="intro" aria-live="polite">
+  <div id="intro-titulo"><div id="intro-logo"></div><div id="intro-presiona"></div></div>
+  <div id="intro-negro"><div id="intro-estudio"></div></div>
+</div>
 
 <!-- SPLASH SCREEN -->
 <div id="splash"><div id="carga-inicial">CARGANDO…</div>
@@ -1186,6 +1210,12 @@ const ARTE_MENU={
 };
 // título y botones del menú principal dibujados (si quedan vacíos, se usa el texto de siempre)
 ARTE_MENU.titulo="titulo_aethelgard.png";
+// ── INTRO AL ABRIR EL JUEGO (como la de Terraria): primero el estudio, después el título ──
+const INTRO={
+  estudio:"The Ink Owl",   // nombre del estudio (sale con tus letras grandes)
+  buho:"",                 // PNG del búho negrito que va al lado del nombre (cuando lo tengas)
+  segundos_estudio:2.2,    // cuánto se queda el logo del estudio (sin contar las transiciones)
+};
 ARTE_MENU.botones={jugar:"menu_jugar.png",ajustes:"menu_ajustes.png",logros:"menu_logros.png",enciclopedia:"menu_enciclopedia.png",creditos:"menu_creditos.png"};
 const EASTER_EGG_PROBABILIDAD=0.02;   // 2 % cada vez que aparece algo nuevo
 const ESTRELLAS_QUE_PARPADEAN=0.4;    // qué parte de las estrellas del fondo parpadea (0 a 1)
@@ -1870,6 +1900,45 @@ function textoDibujado(txt,tam="g",esc=1,minusculas=false){
 }
 function escalaEscena(){document.documentElement.style.setProperty("--k-escena",Math.min(window.innerWidth/960,window.innerHeight/540));}
 window.addEventListener("resize",escalaEscena);escalaEscena();
+// ═══════════════ INTRO: THE INK OWL → TÍTULO → "PRESIONA CUALQUIER BOTÓN" → MENÚ ═══════════════
+(function intro(){
+  const capa=document.getElementById("intro");if(!capa)return;
+  const quitar=()=>{capa.classList.add("fuera");document.body.classList.remove("en-intro");setTimeout(()=>capa.remove(),700);};
+  // al volver al menú desde una partida no se repite (solo al abrir el juego)
+  let saltar=false;try{saltar=sessionStorage.getItem("aeth_saltar_intro")==="1";sessionStorage.removeItem("aeth_saltar_intro");}catch(e){}
+  if(saltar){capa.remove();document.body.classList.remove("en-intro");return;}
+  const negro=document.getElementById("intro-negro"),est=document.getElementById("intro-estudio"),tit=document.getElementById("intro-titulo");
+  let fase="estudio",timers=[];
+  const luego=(f,ms)=>timers.push(setTimeout(f,ms));
+  const escribir=()=>{ // con tus letras si ya cargaron
+    est.innerHTML=(INTRO.buho?`<img src="${rutaArte(INTRO.buho)}" alt="" onerror="this.remove()">`:"")+`<span>${textoDibujado(INTRO.estudio.toUpperCase(),"g",Math.max(1.4,Math.min(3,window.innerWidth/420)))}</span>`;
+    document.getElementById("intro-presiona").innerHTML=textoDibujado("PRESIONA CUALQUIER BOTÓN","g",Math.max(0.7,Math.min(1.2,window.innerWidth/1100)));
+    const logo=document.getElementById("intro-logo");
+    if(ARTE_MENU.titulo){const im=new Image();im.alt="Aethelgard";im.onload=()=>{logo.innerHTML="";logo.appendChild(im);};im.src=rutaArte(ARTE_MENU.titulo);logo.innerHTML=textoDibujado("AETHELGARD","g",3);}
+    else logo.innerHTML=textoDibujado("AETHELGARD","g",3);
+  };
+  const aTitulo=()=>{
+    if(fase!=="estudio")return;fase="titulo";timers.forEach(clearTimeout);
+    est.classList.remove("ver");negro.classList.add("fuera");
+    setTimeout(()=>tit.classList.add("ver"),500);
+  };
+  // espera un momento a tus letras (para que el nombre no salga primero en letra común)
+  const t0=performance.now();
+  (function arrancar(){
+    if(!fuenteLista.g&&performance.now()-t0<1200){requestAnimationFrame(arrancar);return;}
+    escribir();
+    luego(()=>est.classList.add("ver"),150);
+    luego(()=>est.classList.remove("ver"),150+900+INTRO.segundos_estudio*1000);
+    luego(aTitulo,150+900+INTRO.segundos_estudio*1000+900);
+  })();
+  const tecla=e=>{
+    if(fase==="estudio"){aTitulo();return;}            // apretar algo durante el logo lo salta
+    if(fase==="titulo"&&tit.classList.contains("ver")){fase="menu";if(typeof playTone==="function")try{playTone(660,0.08,'sine',0.04);}catch(err){}quitar();
+      window.removeEventListener("keydown",tecla,true);capa.removeEventListener("pointerdown",tecla);}
+    if(e&&e.type==="keydown"){e.preventDefault();e.stopPropagation();}
+  };
+  window.addEventListener("keydown",tecla,true);capa.addEventListener("pointerdown",tecla);
+})();
 function nuevaEscena(vistaId,panelArchivo){
   const v=document.getElementById(vistaId);
   let e=v.querySelector(".escena");if(e)e.remove();
@@ -8048,7 +8117,7 @@ function toggleIngameOptions(){
   document.getElementById("ig-vol-sfx").value=Math.round(sfxVol*100);
   document.getElementById("ig-vol-sfx-val").textContent=Math.round(sfxVol*100)+"%";
 }
-function goToMainMenu(){location.reload();return;gameOver=true;stopGameMusic();document.getElementById("ingame-options").style.display="none";document.getElementById("end-screen").style.display="none";document.getElementById("splash").style.display="flex";}
+function goToMainMenu(){try{sessionStorage.setItem("aeth_saltar_intro","1");}catch(e){}location.reload();return;gameOver=true;stopGameMusic();document.getElementById("ingame-options").style.display="none";document.getElementById("end-screen").style.display="none";document.getElementById("splash").style.display="flex";}
 
 // ═══════════════ ÁRBOL TECNOLÓGICO (panel de referencia) ═══════════════
 // No agrega ninguna mecánica nueva — solo visualiza en un solo lugar todo lo
@@ -8204,7 +8273,7 @@ window.addEventListener("click", () => {
     <div id="end-score" style="font-size:13px;color:var(--gold);margin-bottom:24px;line-height:1.8;"></div>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
       <button type="button" id="btn-repeticion" onclick="verRepeticion()" style="background:linear-gradient(180deg,#0e2a1e,#081a12);border:1px solid #3a8a5a;color:#a0ffc8;font-family:'Cinzel',serif;font-size:12px;padding:10px 18px;cursor:pointer;letter-spacing:2px;">🎬 VER REPETICIÓN</button>
-      <button type="button" onclick="location.reload()" style="background:linear-gradient(180deg,#2a1e10,#1a1208);border:2px solid var(--gold);color:var(--gold-bright);font-family:'Cinzel',serif;font-size:12px;padding:10px 28px;cursor:pointer;letter-spacing:2px;pointer-events:auto;position:relative;z-index:1;">🔄 Jugar de Nuevo</button>
+      <button type="button" onclick="goToMainMenu()" style="background:linear-gradient(180deg,#2a1e10,#1a1208);border:2px solid var(--gold);color:var(--gold-bright);font-family:'Cinzel',serif;font-size:12px;padding:10px 28px;cursor:pointer;letter-spacing:2px;pointer-events:auto;position:relative;z-index:1;">🔄 Jugar de Nuevo</button>
       <button type="button" onclick="goToMainMenu()" style="background:linear-gradient(180deg,#1a0e2a,#0e0818);border:1px solid #5a3a8a;color:#c0a0ff;font-family:'Cinzel',serif;font-size:12px;padding:10px 28px;cursor:pointer;letter-spacing:2px;pointer-events:auto;position:relative;z-index:1;">🏠 Menú Principal</button>
     </div>
   </div>
