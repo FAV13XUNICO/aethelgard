@@ -878,13 +878,14 @@ function rutaMusica(f){return rutaCon(RUTA_MUSICA,f);}
 
 const ARTE_UNIDADES={
   // — Dominio Kaelen (jugador) —
-  heroe:         {idle:{sheet:"paladin_alien-sheet.png",count:6,fps:7,drawW:100,offY:25,offX:8},
-                  walk:{sheet:"paladin_alien_caminando.png",count:9,fps:11,drawW:100,offY:19,offX:8}},   // Aeon Thraze (héroe)
+  heroe:         {idle:  {sheet:"aeon_thraze-sheet.png",fila:0,count:6,frameW:100,frameH:100,fps:7,drawW:100,offY:25,offX:8},
+                  walk:  {sheet:"aeon_thraze-sheet.png",fila:1,count:9,frameW:100,frameH:100,fps:11,drawW:100,offY:19,offX:8},
+                  attack:{sheet:"aeon_thraze-sheet.png",fila:2,count:7,frameW:100,frameH:100,fps:14,disparoEn:3,drawW:100,offY:25,offX:9}},   // (filas: quieto · caminando · atacando)   // Aeon Thraze (héroe)
   obrero:        {idle:{sheet:"obrero_png_profe.png",count:5,fps:6,drawW:84,offY:23,offX:-2},
                   work:{sheet:"obrero_trabajando_alien.png",count:10,fps:12,drawW:84,offY:21,offX:-1}},   // Dron Constructor (work = talando / reparando)
   // un PNG por unidad: cada FILA es una animación (fila:0 = la de arriba). frameW/frameH = tamaño de un cuadro.
   soldado:       {idle:  {sheet:"centinela_plasma-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:8,drawW:70,offY:3,offX:-4},
-                  attack:{sheet:"centinela_plasma-sheet.png",fila:1,count:9,frameW:100,frameH:100,fps:14,disparoEn:4,drawW:70,offY:9,offX:-4}},   // Centinela de Plasma (fila 0 quieto, fila 1 espadazo)
+                  attack:{sheet:"centinela_plasma-sheet.png",fila:1,count:6,frameW:100,frameH:100,fps:14,disparoEn:2,drawW:70,offY:6,offX:-7}},   // Centinela de Plasma (fila 0 quieto, fila 1 espadazo)
   fusilero:      {sheet:"arquero_disparador-sheet.png",count:5,fps:10,drawW:90,offY:19,offX:4},   // Emisor de Pulso (el arquero Kaelen)
   caballero:     {idle:{sheet:"coloso_blindado-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:6,drawW:76,offY:12,offX:-3},
                   walk:{sheet:"coloso_blindado-sheet.png",fila:1,count:7,frameW:100,frameH:100,fps:10,drawW:76,offY:11,offX:-2}}, // Coloso Blindado (fila 0 quieto, fila 1 caminando)
@@ -896,16 +897,20 @@ const ARTE_UNIDADES={
                   habilidad:{sheet:"manipuladora_cuantica-sheet.png",fila:2,count:5,frameW:100,frameH:100,fps:9,drawW:75,offY:14,offX:3}}, // Manipuladora Cuántica (filas: quieta · caminando · haciendo magia)
   rompehechizos: "",   // Disruptor de Escudos
   // — Coalición Terrestre (IA) —
-  heroe_enemigo:     {sheet:"astronauta_paladin-sheet.png",count:7,fps:7,drawW:96,offY:16,offX:6},   // General Voss (antes era el dibujo del Exo-traje Pesado)
+  heroe_enemigo:     {idle:  {sheet:"general_voss-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:7,drawW:96,offY:16,offX:6},
+                      attack:{sheet:"general_voss-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:14,disparoEn:4,drawW:96,offY:18,offX:8}},   // (filas: quieto · disparando)   // General Voss (antes era el dibujo del Exo-traje Pesado)
   obrero_enemigo:    {idle:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,cuadros:[0],drawW:72,offY:13,offX:4},
                       work:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,fps:6,drawW:72,offY:13,offX:4},
                       walk:{sheet:"ingeniero_campo-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:11,drawW:72,offY:13,offX:4},
                       taladro:{sheet:"ingeniero_campo-sheet.png",fila:2,count:5,frameW:100,frameH:100,fps:10,drawW:72,offY:12,offX:9}},   // Ingeniero de Campo (filas: picando/construyendo · caminando · taladrando metal)
-  enemigo_bruto:     {sheet:"astronata_combate-sheet.png",count:4,fps:6,drawW:75,offY:13,offX:-3},   // Soldado de Asalto
-  enemigo_cazador:   {idle:  {sheet:"arquero_disparando_en_png_astronauta.png",count:14,cuadros:[0],drawW:80,offY:15,offX:4},
-                      attack:{sheet:"arquero_disparando_en_png_astronauta.png",count:14,fps:16,disparoEn:7,drawW:80,offY:15,offX:4}}, // Francotirador
+  enemigo_bruto:     {idle:{sheet:"soldado_asalto-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:75,offY:13,offX:-3},
+                      walk:{sheet:"soldado_asalto-sheet.png",fila:1,count:15,frameW:100,frameH:100,fps:18,drawW:75,offY:12,offX:-3}},   // (filas: quieto · caminando)   // Soldado de Asalto
+  enemigo_cazador:   {idle:  {sheet:"francotirador-sheet.png",fila:0,count:14,frameW:100,frameH:100,cuadros:[0],drawW:80,offY:15,offX:4},
+                      walk:  {sheet:"francotirador-sheet.png",fila:1,count:9,frameW:100,frameH:100,fps:12,drawW:80,offY:19,offX:2},
+                      attack:{sheet:"francotirador-sheet.png",fila:0,count:14,frameW:100,frameH:100,fps:16,disparoEn:7,drawW:80,offY:15,offX:4}}, // Francotirador (filas: disparando · caminando)
   enemigo_trol:      {idle:  {sheet:"exo_traje_pesado-sheet.png",fila:0,count:6,frameW:100,frameH:100,fps:6,drawW:90,offY:19,offX:5},
-                      attack:{sheet:"exo_traje_pesado-sheet.png",fila:1,count:11,frameW:100,frameH:100,fps:15,disparoEn:8,drawW:73,offY:4,offX:-15}},  // Exo-traje Pesado (fila 0 quieto, fila 1 martillazo)
+                      attack:{sheet:"exo_traje_pesado-sheet.png",fila:1,count:11,frameW:100,frameH:100,fps:15,disparoEn:8,drawW:73,offY:4,offX:-15},
+                      walk:  {sheet:"exo_traje_pesado-sheet.png",fila:2,count:13,frameW:100,frameH:100,fps:14,drawW:90,offY:18,offX:9}},  // Exo-traje Pesado (fila 0 quieto, fila 1 martillazo)
   enemigo_mago:      {sheet:"hacker_combate-sheet.png",count:8,fps:7,drawW:72,offY:13,offX:4},   // Hacker de Combate (el mago humano astronauta)
   enemigo_bestia:    "",   // Tanque Blindado
   enemigo_asesino:   {idle:  {sheet:"comando_elite-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:72,offY:15,offX:6},
@@ -919,11 +924,13 @@ const ARTE_UNIDADES={
   jabali:    {idle:  {sheet:"reptante_infectado-sheet.png",fila:0,count:5,frameW:100,frameH:100,fps:6,drawW:72,offY:14,offX:3},
               walk:  {sheet:"reptante_infectado-sheet.png",fila:1,count:7,frameW:100,frameH:100,fps:10,drawW:72,offY:15,offX:-1},
               attack:{sheet:"reptante_infectado-sheet.png",fila:2,count:7,frameW:100,frameH:100,fps:14,disparoEn:3,drawW:72,offY:16,offX:2}},   // Reptante Infectado (filas: quieto · caminando · atacando)
-  lobo:      "",   // Depredador Veloz
+  lobo:      {idle:  {sheet:"gatoide_infectado-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:72,offY:8,offX:0},
+              walk:  {sheet:"gatoide_infectado-sheet.png",fila:1,count:6,frameW:100,frameH:100,fps:14,drawW:72,offY:8,offX:1},
+              attack:{sheet:"gatoide_infectado-sheet.png",fila:2,count:8,frameW:100,frameH:100,fps:16,disparoEn:4,drawW:72,offY:10,offX:2}},   // Gatoide Infectado (filas: quieto · corriendo · atacando)
   oso:       {idle:  {sheet:"slime_blindado-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:90,offY:9,offX:-1},
               walk:  {sheet:"slime_blindado-sheet.png",fila:1,count:4,frameW:100,frameH:100,fps:8,drawW:90,offY:10,offX:-5},
               attack:{sheet:"slime_blindado-sheet.png",fila:2,count:6,frameW:100,frameH:100,fps:12,disparoEn:3,drawW:90,offY:10,offX:-2}},   // Slime Blindado (filas: quieto · caminando · atacando)
-  ogro_jefe: "",   // Titán de la Jungla (mini-jefe)
+  ogro_jefe: {sheet:"titan_de_la_jungla-sheet.png",count:4,frameW:120,frameH:120,fps:5,drawW:150,offY:30,offX:-1},   // Titán de la Jungla (mini-jefe; cuadros de 120×120)
 };
 
 // Edificios: se apoyan sobre su huella. drawW por defecto = ancho de la huella.
@@ -941,7 +948,7 @@ const ARTE_ESTRUCTURAS={
   base_enemigo:     "",   // Cuartel General
   barracks_enemigo: {sheet:"castillo_para_paladines.png",count:10,fps:8,drawW:255,offY:79,offX:11},  // Academia Militar
   tower_enemigo:    "",   // Torreta de Defensa
-  farm_enemigo:     "",   // Depósito de Suministros
+  farm_enemigo:     {sheet:"casa_tecnologia-sheet.png",count:2,fps:2,drawW:112,offY:11,offX:11},   // Depósito de Suministros (la casa de tecnología, con las luces que parpadean)
   forge_enemigo:    {sheet:"fabrica_armamento-sheet.png",count:3,fps:3,drawW:209,offY:43,offX:2}, // Fábrica de Armamento (la forja de ladrillo)
   // sin usar por ahora: casa_de_jipies_magos_png_67.png (la casa verde de los magos), robot_malo.png
 };
@@ -1016,7 +1023,8 @@ const ARTE_INTERFAZ={
   clic_mover:      {sheet:"lugar_donde_ira_la_unidad.png",count:3,cuadros:[0,1,2,1],fps:10,repetir:3,drawW:125,offY:-7},   // marca en el suelo al dar una orden de mover (como las flechas verdes de WC3).
                          //   repetir:N = la tira se repite N veces (la última se desvanece). cuadros = orden de los cuadros.
                          //   Si es una tira, se reproduce UNA vez y desaparece. Ej.: {sheet:"clic-sheet.png",count:6,fps:15,drawW:48}
-  clic_atacar:     "",   // igual, para la orden de atacar (si queda vacío, usa clic_mover)
+  clic_atacar:     {sheet:"clic_atacar.png",count:3,cuadros:[0,1,2,1],fps:10,repetir:3,drawW:110,offY:-18},   // "aquí puedes atacar": la espada
+  clic_recolectar: {sheet:"clic_minar.png",count:3,cuadros:[0,1,2,1],fps:10,repetir:3,drawW:110,offY:-18},    // "selecciona dónde minarás": el pico (minas y rocas)
 };
 
 // ── PROYECTILES ── (lo que vuela desde la unidad que dispara hasta su objetivo)
@@ -1105,8 +1113,11 @@ const HUD_ZONAS={
 // Las tarjetas del grupo (cuando eliges varias unidades) usan el primer cuadro.
 const ARTE_RETRATOS={
   // ── Dominio Kaelen (tus unidades) ──
-  "Aeon Thraze":"", "Dron Constructor":"", "Centinela de Plasma":"", "Emisor de Pulso":"",
-  "Coloso Blindado":"", "Unidad de Nanoreparación":"", "Manipuladora Cuántica":"", "Disruptor de Escudos":"",
+  "Aeon Thraze":"", "Emisor de Pulso":"", "Unidad de Nanoreparación":"", "Disruptor de Escudos":"",
+  "Dron Constructor":     {sheet:"retrato_dron_constructor-sheet.png",count:4,fps:5},
+  "Centinela de Plasma":  {sheet:"retrato_centinela_plasma-sheet.png",count:4,fps:5},
+  "Coloso Blindado":      {sheet:"retrato_coloso_blindado-sheet.png",count:13,fps:9},
+  "Manipuladora Cuántica":{sheet:"retrato_manipuladora_cuantica-sheet.png",count:3,fps:4},
   // ── Dominio Kaelen (tus estructuras) ──
   "Núcleo Central":"", "Forja de Autómatas":"", "Cámara de Reconstrucción":"", "Extractor de Energía":"",
   "Laboratorio de Armamento":"", "Torreta de Plasma":"", "Generador de Soporte Vital":"", "Portal Dimensional":"",
@@ -1116,7 +1127,7 @@ const ARTE_RETRATOS={
   // ── Coalición Terrestre (estructuras de la IA) ──
   "Cuartel General":"", "Academia Militar":"", "Fábrica de Armamento":"", "Torreta de Defensa":"", "Depósito de Suministros":"",
   // ── Neutrales ──
-  "Reptante Infectado":"", "Depredador Veloz":"", "Slime Blindado":"", "Titán de la Jungla":"",
+  "Reptante Infectado":"", "Gatoide Infectado":"", "Slime Blindado":"", "Titán de la Jungla":"",
   "Puesto del Mercader Errante":"",
 };
 // ── MÚSICA ── (archivos .mp3/.ogg/.wav en la misma carpeta que este HTML)
@@ -1203,7 +1214,7 @@ const ENCICLOPEDIA_TEXTOS={
   "Depósito de Suministros":"Le permite a la Coalición tener más tropas.",
   "Fábrica de Armamento":"Investiga el armamento mejorado de la Coalición.",
   "Reptante Infectado":"Criatura nativa contaminada por la infección: ataca a todo lo que entra en su territorio.",
-  "Depredador Veloz":"Caza en manada y ataca rápido.",
+  "Gatoide Infectado":"Un felino del planeta deformado por la infección: rapidísimo, caza en manada y salta sobre su presa.",
   "Slime Blindado":"Un slime metido dentro de una armadura vieja: lento, pero con un caparazón muy duro.",
   "Titán de la Jungla":"El mini-jefe del centro del mapa. Suelta muy buen botín.",
   "Puesto del Mercader Errante":"La tienda neutral del centro: aquí el héroe compra y vende objetos.",
@@ -3566,6 +3577,7 @@ function spawnDamageText(x,y,dmg,isHero){
 }
 
 // Marca en el suelo al dar una orden. tipo = "mover" o "atacar".
+function arteDePing(p){return (p.tipo==="atacar"&&ARTE_INTERFAZ.clic_atacar)||(p.tipo==="recolectar"&&ARTE_INTERFAZ.clic_recolectar)||ARTE_INTERFAZ.clic_mover;}
 function spawnPing(x,y,tipo){
   const p=worldToIso(x,y);
   pingMarkers.push({x:p.x,y:p.y,r:0,life:1,tipo:tipo||"mover",t0:performance.now()});
@@ -3688,7 +3700,7 @@ function updateParticles(dt){
     const p=pingMarkers[i];
     p.r+=1.2;
     // con PNG la marca dura lo que dura su tira; sin PNG, el anillo se desvanece
-    const conArte=(p.tipo==="atacar"&&ARTE_INTERFAZ.clic_atacar)||ARTE_INTERFAZ.clic_mover;
+    const conArte=arteDePing(p);
     if(!conArte||!imgLista(getAnimImg(typeof conArte==="string"?conArte:conArte.sheet)))p.life-=0.04;
     if(p.life<=0||performance.now()-p.t0>4000)pingMarkers.splice(i,1);
   }
@@ -3740,7 +3752,7 @@ function drawParticles(){
   }
   ctx.globalAlpha=1;
   for(const p of pingMarkers){
-    const arte=(p.tipo==="atacar"&&ARTE_INTERFAZ.clic_atacar)||ARTE_INTERFAZ.clic_mover;
+    const arte=arteDePing(p);
     const fr=frameUnaVez(arte,p.t0);
     if(fr&&fr.terminado){p.life=0;continue;}
     if(fr){ctx.globalAlpha=fr.alpha;drawAnimFrame(fr,p.x,p.y+fr.offY,fr.drawW||48,0.5);ctx.globalAlpha=1;continue;}
@@ -3842,7 +3854,7 @@ const aiWorkers=[];
 // centro del campamento, con mucha más vida y mejor botín al morir.
 const NEUTRAL_TYPES={
   jabali:{name:"Reptante Infectado",  hp:80, damage:9, speed:1.6,radius:12,aggro:170,leash:260,cooldown:55,goldReward:15,icon:"🐗",sprite:"jabali",shape:"hex"},
-  lobo:  {name:"Depredador Veloz", hp:55, damage:12,speed:2.3,radius:11,aggro:210,leash:280,cooldown:40,goldReward:18,icon:"🐺",sprite:"lobo",  shape:"hex"},
+  lobo:  {name:"Gatoide Infectado", hp:55, damage:12,speed:2.3,radius:11,aggro:210,leash:280,cooldown:40,goldReward:18,icon:"🐈",sprite:"lobo",  shape:"hex"},
   oso:   {name:"Slime Blindado",  hp:170,damage:17,speed:1.3,radius:15,aggro:150,leash:220,cooldown:65,goldReward:28,icon:"🐻",sprite:"oso",   shape:"hex"},
 };
 const MINIBOSS_TYPES={
@@ -5141,7 +5153,7 @@ function snapBuildPos(centerX,centerY,size){
 }
 
 // ═══════════════ UI FUNCTIONS ═══════════════
-const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Cuartel General":"💀","Academia Militar":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Infectado":"🐗","Depredador Veloz":"🐺","Slime Blindado":"🐻","Titán de la Jungla":"👹","Puesto del Mercader Errante":"🛒"};
+const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Cuartel General":"💀","Academia Militar":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Infectado":"🐗","Gatoide Infectado":"🐺","Slime Blindado":"🐻","Titán de la Jungla":"👹","Puesto del Mercader Errante":"🛒"};
 
 function renderQueue(str){queueBox.innerHTML="";if(!str.queue||str.queue.length===0)return;str.queue.forEach((item,i)=>{let sl=document.createElement("div");sl.className="queue-slot";sl.textContent=item.name;sl.onclick=ev=>{ev.stopPropagation();cancelQueueItem(str,i);};queueBox.appendChild(sl);});}
 function cancelQueueItem(str,i){let c=str.queue.splice(i,1)[0];gold+=c.goldCost||0;lumber+=c.lumberCost||0;if(i===0)str.trainingProgress=0;updateBottomUI();}
@@ -5655,8 +5667,13 @@ canvas.addEventListener("contextmenu",e=>{
       return;
     }
   }
-  // ping
-  spawnPing(world.x,world.y);
+  // ping: con obreros sobre una mina o roca sale el pico ("selecciona dónde minarás")
+  {
+    const obreros=selectedUnits.some(u=>u.type==="worker");
+    const roca=obreros&&trees.find(t=>world.x>t.x&&world.x<t.x+40&&world.y>t.y&&world.y<t.y+40);
+    const mina=obreros&&!roca&&mines.find(m=>Math.hypot(world.x-m.x,world.y-m.y)<m.size+50);
+    if(roca)spawnPing(roca.x+20,roca.y+20,"recolectar");else if(mina)spawnPing(mina.x,mina.y,"recolectar");else spawnPing(world.x,world.y);
+  }
   let clickedStr=structures.find(s=>world.x>s.x&&world.x<s.x+s.size&&world.y>s.y&&world.y<s.y+s.size);
   // separamos quiénes van a moverse en formación de quienes tienen una orden
   // específica (talar/minar/construir) — la formación solo aplica al primer grupo
