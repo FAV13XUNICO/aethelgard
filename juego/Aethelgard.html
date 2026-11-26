@@ -2543,7 +2543,11 @@ const EDGE=3;let CAM_SPD=20; // la velocidad la elige el jugador en AJUSTES
 // Arranca "en el centro": antes arrancaba en (0,0) y, hasta mover el mouse, la
 // cámara se iba sola a la esquina de arriba a la izquierda (pantalla negra al empezar).
 let winMouseX=window.innerWidth/2,winMouseY=window.innerHeight/2;
-window.addEventListener("mousemove",e=>{winMouseX=e.clientX;winMouseY=e.clientY;});
+// El cursor se cambia DENTRO del evento del mouse: Chrome solo vuelve a dibujar el cursor cuando
+// el mouse se mueve, y pegado al borde de la pantalla el mouse ya no se puede mover más
+// (por eso a veces la flecha no aparecía: el cambio llegaba un instante después del último movimiento).
+window.addEventListener("mousemove",e=>{winMouseX=e.clientX;winMouseY=e.clientY;
+  if(document.body.classList.contains("cursor-juego")&&!gameOver){try{actualizarCursor();}catch(err){}}});
 // Si el mouse sale de la ventana (al ir a otra ventana o al proyector) la cámara
 // deja de desplazarse; antes quedaba "pegada" moviéndose sin parar.
 function soltarBordes(){winMouseX=window.innerWidth/2;winMouseY=window.innerHeight/2;}
