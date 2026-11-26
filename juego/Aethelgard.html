@@ -853,7 +853,8 @@ const ARTE_UNIDADES={
   heroe_enemigo:     {sheet:"astronauta_paladin-sheet.png",count:7,fps:7,drawW:96,offY:16,offX:6},   // General Voss (antes era el dibujo del Exo-traje Pesado)
   obrero_enemigo:    {idle:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,cuadros:[0],drawW:72,offY:13,offX:4},
                       work:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,fps:6,drawW:72,offY:13,offX:4},
-                      walk:{sheet:"ingeniero_campo-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:11,drawW:72,offY:13,offX:4}},   // Ingeniero de Campo (fila 0 picando, fila 1 caminando)
+                      walk:{sheet:"ingeniero_campo-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:11,drawW:72,offY:13,offX:4},
+                      taladro:{sheet:"ingeniero_campo-sheet.png",fila:2,count:5,frameW:100,frameH:100,fps:10,drawW:72,offY:12,offX:9}},   // Ingeniero de Campo (filas: picando/construyendo · caminando · taladrando metal)
   enemigo_bruto:     {sheet:"astronata_combate-sheet.png",count:4,fps:6,drawW:75,offY:13,offX:-3},   // Soldado de Asalto
   enemigo_cazador:   {idle:  {sheet:"arquero_disparando_en_png_astronauta.png",count:14,cuadros:[0],drawW:80,offY:15,offX:4},
                       attack:{sheet:"arquero_disparando_en_png_astronauta.png",count:14,fps:16,disparoEn:7,drawW:80,offY:15,offX:4}}, // Francotirador
@@ -873,7 +874,9 @@ const ARTE_UNIDADES={
               walk:  {sheet:"reptante_infectado-sheet.png",fila:1,count:7,frameW:100,frameH:100,fps:10,drawW:72,offY:15,offX:-1},
               attack:{sheet:"reptante_infectado-sheet.png",fila:2,count:7,frameW:100,frameH:100,fps:14,disparoEn:3,drawW:72,offY:16,offX:2}},   // Reptante Infectado (filas: quieto · caminando · atacando)
   lobo:      "",   // Depredador Veloz
-  oso:       {sheet:"slime_blindado-sheet.png",count:4,fps:6,drawW:90,offY:9,offX:-1},   // Slime Blindado
+  oso:       {idle:  {sheet:"slime_blindado-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:90,offY:9,offX:-1},
+              walk:  {sheet:"slime_blindado-sheet.png",fila:1,count:4,frameW:100,frameH:100,fps:8,drawW:90,offY:10,offX:-5},
+              attack:{sheet:"slime_blindado-sheet.png",fila:2,count:6,frameW:100,frameH:100,fps:12,disparoEn:3,drawW:90,offY:10,offX:-2}},   // Slime Blindado (filas: quieto · caminando · atacando)
   ogro_jefe: "",   // Titán de la Jungla (mini-jefe)
 };
 
@@ -1630,7 +1633,7 @@ function datosEnciclopedia(){
 }
 let encCategoria=null,encElegido=null;
 // ── Ficha completa (panel de la derecha): arriba todas sus animaciones, abajo su información ──
-const ENC_NOMBRES_ANIM={idle:"Quieto",walk:"Caminando",attack:"Atacando",work:"Trabajando",habilidad:"Habilidad"};
+const ENC_NOMBRES_ANIM={idle:"Quieto",walk:"Caminando",attack:"Atacando",work:"Trabajando",taladro:"Taladrando",habilidad:"Habilidad"};
 const ENC_EDIF_BOTON={"Núcleo Central":"cmd-b-base","Forja de Autómatas":"cmd-b-barracks","Cámara de Reconstrucción":"cmd-b-altar","Extractor de Energía":"cmd-b-sawmill",
   "Laboratorio de Armamento":"cmd-b-forge","Torreta de Plasma":"cmd-b-tower","Generador de Soporte Vital":"cmd-b-farm","Portal Dimensional":"cmd-b-sanctuary",
   "Dron Constructor":"cmd-worker","Centinela de Plasma":"cmd-soldier","Emisor de Pulso":"cmd-rifleman","Coloso Blindado":"cmd-knight",
@@ -1808,29 +1811,38 @@ const ARTE_PANTALLAS={
   marco:"ui_marco_gris.png", atras:"ui_boton_atras.png", iniciar:"ui_boton_iniciar.png", boton_vacio:"ui_boton_vacio.png",
   perilla:"ui_deslizador_perilla.png", barra:"ui_deslizador_barra.png",
   titulo_creditos:"ui_titulo_creditos.png", titulo_enciclopedia:"ui_titulo_enciclopedia.png",
-  letras_grandes:"ui_letras_grandes.png", letras_chicas:"ui_letras_chicas.png",
+  letras_grandes:"ui_letras_grandes.png", letras_chicas:"ui_letras_chicas.png", letras_pequenas:"ui_letras_pequenas.png", // pequeñas = minúsculas (a-z y -)
   // íconos de los logros que todavía no tienes (en el mismo orden que LOGROS)
   logros_bloqueados:["logro_bloqueado_1.png","logro_bloqueado_2.png","logro_bloqueado_3.png","logro_bloqueado_4.png","logro_bloqueado_5.png"],
 };
 // tu abecedario: [x en la hoja, ancho, alto, distancia a la línea de abajo]
-const FUENTE_DIBUJADA={g:{"A": [0, 19, 23, 1], "B": [21, 16, 23, 1], "C": [39, 18, 22, 1], "D": [59, 13, 22, 1], "E": [74, 13, 23, 0], "F": [89, 11, 23, 0], "G": [102, 16, 21, 0], "H": [120, 18, 22, 0], "I": [140, 19, 22, 1], "J": [161, 20, 22, 1], "K": [183, 17, 24, 1], "L": [202, 15, 25, 0], "M": [219, 20, 23, 1], "N": [241, 18, 22, 1], "Ñ": [261, 18, 29, 1], "O": [281, 15, 22, 0], "P": [298, 14, 21, 1], "Q": [314, 15, 22, 0], "R": [331, 16, 23, 0], "S": [349, 16, 21, 1], "T": [367, 14, 23, 0], "U": [383, 14, 20, 0], "V": [399, 17, 19, 1], "W": [418, 25, 19, 0], "X": [445, 21, 20, 0], "Y": [468, 16, 19, 0], "Z": [486, 17, 18, 0], "´": [505, 8, 9, 7]},c:{"A": [0, 12, 18, 0], "B": [14, 12, 17, 0], "C": [28, 13, 16, 1], "D": [43, 10, 16, 1], "E": [55, 10, 13, 2], "F": [67, 8, 17, 0], "G": [77, 11, 15, 0], "H": [90, 14, 16, 0], "I": [106, 14, 16, 1], "J": [122, 15, 16, 1], "K": [139, 12, 16, 1], "L": [153, 11, 17, 0], "M": [166, 15, 16, 1], "N": [183, 13, 16, 0], "Ñ": [198, 13, 20, 1], "O": [213, 11, 15, 0], "P": [226, 11, 14, 1], "Q": [239, 10, 15, 0], "R": [251, 12, 16, 0], "S": [265, 11, 15, 2], "T": [278, 11, 17, 1], "U": [291, 10, 14, 1], "V": [303, 12, 13, 2], "W": [317, 17, 13, 1], "X": [336, 15, 14, 1], "Y": [353, 11, 15, 0], "Z": [366, 13, 13, 1], "´": [381, 6, 7, 6]},tam:{g:[515,29],c:[389,20]}};
+const FUENTE_DIBUJADA={g:{"A": [0, 19, 23, 1], "B": [21, 16, 23, 1], "C": [39, 18, 22, 1], "D": [59, 13, 22, 1], "E": [74, 13, 23, 0], "F": [89, 11, 23, 0], "G": [102, 16, 21, 0], "H": [120, 18, 22, 0], "I": [140, 19, 22, 1], "J": [161, 20, 22, 1], "K": [183, 17, 24, 1], "L": [202, 15, 25, 0], "M": [219, 20, 23, 1], "N": [241, 18, 22, 1], "Ñ": [261, 18, 29, 1], "O": [281, 15, 22, 0], "P": [298, 14, 21, 1], "Q": [314, 15, 22, 0], "R": [331, 16, 23, 0], "S": [349, 16, 21, 1], "T": [367, 14, 23, 0], "U": [383, 14, 20, 0], "V": [399, 17, 19, 1], "W": [418, 25, 19, 0], "X": [445, 21, 20, 0], "Y": [468, 16, 19, 0], "Z": [486, 17, 18, 0], "´": [505, 8, 9, 7]},c:{"A": [0, 12, 18, 0], "B": [14, 12, 17, 0], "C": [28, 13, 16, 1], "D": [43, 10, 16, 1], "E": [55, 10, 13, 2], "F": [67, 8, 17, 0], "G": [77, 11, 15, 0], "H": [90, 14, 16, 0], "I": [106, 14, 16, 1], "J": [122, 15, 16, 1], "K": [139, 12, 16, 1], "L": [153, 11, 17, 0], "M": [166, 15, 16, 1], "N": [183, 13, 16, 0], "Ñ": [198, 13, 20, 1], "O": [213, 11, 15, 0], "P": [226, 11, 14, 1], "Q": [239, 10, 15, 0], "R": [251, 12, 16, 0], "S": [265, 11, 15, 2], "T": [278, 11, 17, 1], "U": [291, 10, 14, 1], "V": [303, 12, 13, 2], "W": [317, 17, 13, 1], "X": [336, 15, 14, 1], "Y": [353, 11, 15, 0], "Z": [366, 13, 13, 1], "´": [381, 6, 7, 6]},p:{"a":[0,10,12,0],"b":[11,9,12,0],"c":[21,9,11,0],"d":[31,9,13,0],"e":[41,8,12,0],"f":[50,10,14,0],"g":[61,9,14,0],"h":[71,9,14,0],"i":[81,4,12,0],"j":[86,7,15,0],"k":[94,11,15,0],"l":[106,6,14,0],"m":[113,17,12,0],"n":[131,11,13,0],"o":[143,9,10,0],"p":[153,8,12,0],"q":[162,12,16,0],"r":[175,12,12,0],"s":[188,11,12,0],"t":[200,10,13,0],"u":[211,9,11,0],"v":[221,9,11,0],"w":[231,15,12,0],"x":[247,12,11,0],"y":[260,10,13,0],"z":[271,10,13,0],"-":[282,6,5,3]},tam:{g:[515,29],c:[389,20],p:[289,16]}};
 // Escribe un texto con tus letras dibujadas (las que no existen, como los números, salen en letra común)
 // (las palabras pasan solas a la línea de abajo si no entran)
-const fuenteLista={g:false,c:false};
-for(const [k,f] of [["g","letras_grandes"],["c","letras_chicas"]]){const im=new Image();im.onload=()=>{fuenteLista[k]=true;};im.onerror=()=>{try{avisarArteFaltante(ARTE_PANTALLAS[f],im.src);}catch(e){}};im.src=rutaArte(ARTE_PANTALLAS[f]);}
-function textoDibujado(txt,tam="g",esc=1){
+const fuenteLista={g:false,c:false,p:false};
+for(const [k,f] of [["g","letras_grandes"],["c","letras_chicas"],["p","letras_pequenas"]]){const im=new Image();im.onload=()=>{fuenteLista[k]=true;};im.onerror=()=>{try{avisarArteFaltante(ARTE_PANTALLAS[f],im.src);}catch(e){}};im.src=rutaArte(ARTE_PANTALLAS[f]);}
+// minusculas=true (solo con "c"): mayúsculas con letras_chicas y minúsculas con letras_pequenas,
+// como texto normal ("Centinela de Plasma"). Sin eso, todo va en MAYÚSCULAS como antes.
+function textoDibujado(txt,tam="g",esc=1,minusculas=false){
   const M=FUENTE_DIBUJADA[tam],[AW,AH]=FUENTE_DIBUJADA.tam[tam];
+  const conMin=minusculas&&tam==="c"&&fuenteLista.p,MP=FUENTE_DIBUJADA.p,[PW_,PH_]=FUENTE_DIBUJADA.tam.p,atlasP=rutaArte(ARTE_PANTALLAS.letras_pequenas);
   if(!fuenteLista[tam]) // si tus letras no cargaron, texto común (así nunca queda vacío)
     return `<span class="txt-comun" style="font-size:${Math.round(M.A[2]*esc*0.8)}px">${String(txt).replace(/[<>&]/g,"")}</span>`;
   const atlas=rutaArte(tam==="g"?ARTE_PANTALLAS.letras_grandes:ARTE_PANTALLAS.letras_chicas);
   const glifo=c=>{const m=M[c];return `<span class="glifo" style="width:${m[1]*esc}px;height:${m[2]*esc}px;margin-bottom:${m[3]*esc}px;background-image:url('${atlas}');background-position:${-m[0]*esc}px 0;background-size:${AW*esc}px ${AH*esc}px"></span>`;};
+  const glifoP=c=>{const m=MP[c];return `<span class="glifo" style="width:${m[1]*esc}px;height:${m[2]*esc}px;margin-bottom:${m[3]*esc}px;background-image:url('${atlasP}');background-position:${-m[0]*esc}px 0;background-size:${PW_*esc}px ${PH_*esc}px"></span>`;};
   const sep=Math.max(1,Math.round(esc)),esp=(tam==="g"?8:5)*esc;
   let h=`<span class="txt-dib" style="column-gap:${esp}px;row-gap:${4*esc}px">`;
-  for(const palabra of String(txt).toUpperCase().split(/\s+/).filter(Boolean)){
+  for(const palabra of (conMin?String(txt):String(txt).toUpperCase()).split(/\s+/).filter(Boolean)){
     h+=`<span class="txt-palabra" style="gap:${sep}px">`;
     for(const ch of palabra){
+      if(conMin&&MP[ch]){h+=glifoP(ch);continue;}
+      const baseMin=conMin&&{"á":"a","é":"e","í":"i","ó":"o","ú":"u","ü":"u"}[ch];
+      if(baseMin){h+=`<span class="glifo-tilde">${glifoP(baseMin)}<span class="tilde" style="top:${-(M["´"][2]+1)*esc}px">${glifo("´")}</span></span>`;continue;}
+      if(conMin&&ch==="ñ"){h+=glifoP("n");continue;}
       const base={"Á":"A","É":"E","Í":"I","Ó":"O","Ú":"U","Ü":"U"}[ch];
       if(M[ch])h+=glifo(ch);
+      else if(conMin&&M[ch.toUpperCase()])h+=glifo(ch.toUpperCase());
       else if(base)h+=`<span class="glifo-tilde">${glifo(base)}<span class="tilde" style="top:${-(M["´"][2]+1)*esc}px">${glifo("´")}</span></span>`;
       else h+=`<span class="glifo-texto" style="font-size:${M.A[2]*esc*0.95}px;-webkit-text-stroke:${Math.max(1,esc*1.4)}px #000">${ch.replace(/[<>&]/g,"")}</span>`;
     }
@@ -1930,7 +1942,7 @@ function armarLogrosDibujado(){
     }
     const tx=document.createElement("div");tx.className="esc-texto logro-txt"+(hecho?"":" apagado");
     tx.style.cssText=`left:${PL+116}px;top:${y+5}px;width:420px;`;
-    tx.innerHTML=`<div>${textoDibujado(l.nombre,"g",0.72)}</div><div>${textoDibujado(l.desc,"c",0.68)}</div>`;
+    tx.innerHTML=`<div>${textoDibujado(l.nombre,"g",0.72)}</div><div>${textoDibujado(l.desc,"c",0.9,true)}</div>`;
     e.appendChild(tx);
   });
   ponerImg(e,ARTE_PANTALLAS.atras,PL+70,PT+364,{alt:"Atrás",onclick:()=>mostrarVista("principal")});
@@ -1949,7 +1961,7 @@ function vestirVistaConMarco(vistaId,tituloArchivo,alt){
 }
 function armarCreditos(){
   const c=document.getElementById("creditos-texto");if(!c)return;
-  c.innerHTML=CREDITOS.map(x=>`<div class="cred-bloque"><h4>${fuenteLista.g?textoDibujado(x.titulo,"g",0.72):x.titulo}</h4>${x.lineas.map(l=>`<p>${fuenteLista.c?textoDibujado(l,"c",0.78):l}</p>`).join("")}</div>`).join("");
+  c.innerHTML=CREDITOS.map(x=>`<div class="cred-bloque"><h4>${fuenteLista.g?textoDibujado(x.titulo,"g",0.72):x.titulo}</h4>${x.lineas.map(l=>`<p>${fuenteLista.c?textoDibujado(l,"c",1,true):l}</p>`).join("")}</div>`).join("");
 }
 function armarMenusDibujados(){
   try{armarAjustesDibujado();armarPartidaDibujada();armarLogrosDibujado();
@@ -2891,7 +2903,11 @@ function avisarArteFaltante(nombre,url){
 function getAnimImg(src){
   if(!animImages[src]){
     const img=new Image();
-    img.onerror=()=>{console.warn(`[arte] No se pudo cargar "${src}": revisa que el nombre sea idéntico y que esté en la carpeta \"arte\".`);avisarArteFaltante(src,img.src);};
+    img.onerror=()=>{
+      // 1.er fallo: reintenta en unos segundos sin caché (si la página se abrió justo mientras
+      // GitHub Pages publicaba los dibujos nuevos, el PNG todavía no estaba)
+      if(!img._reintentos||img._reintentos<2){img._reintentos=(img._reintentos||0)+1;setTimeout(()=>{img.src=rutaArte(src)+"?r="+Date.now();},4000*img._reintentos);return;}
+      console.warn(`[arte] No se pudo cargar "${src}": revisa que el nombre sea idéntico y que esté en la carpeta \"arte\".`);avisarArteFaltante(src,img.src.replace(/\?r=\d+$/,""));};
     img.src=rutaArte(src);animImages[src]=img;
   }
   return animImages[src];
@@ -2907,7 +2923,7 @@ function artClips(key){
   if(typeof e==="string"&&e)r={idle:{sheet:e,count:1}};
   else if(e&&typeof e==="object"){
     if(e.sheet)r={idle:e};
-    else if(e.idle||e.walk||e.attack||e.work||e.habilidad)r={idle:e.idle||null,walk:e.walk||null,attack:e.attack||null,work:e.work||null,habilidad:e.habilidad||null};
+    else if(e.idle||e.walk||e.attack||e.work||e.habilidad)r={idle:e.idle||null,walk:e.walk||null,attack:e.attack||null,work:e.work||null,habilidad:e.habilidad||null,taladro:e.taladro||null};
     if(r)r.entrada=e;
   }
   return _clips[key]=r;
@@ -2951,9 +2967,11 @@ function updateAnim(u,dt){
   }
   // ── obrero trabajando (talando o reparando) ──
   if(anim.work&&anim.work.sheet&&!moving&&(u.state==="repairing"||u.state==="building"||u.state==="building_ai"||(u.state==="chop"&&u.chopProgress>0&&!(u.carrying>0&&u.carrying>=(typeof cargaMetal!=="undefined"?cargaMetal:99)))||(u.state==="chop_ai"&&u.chopProgress>0&&u.carrying<AI_CARGA_METAL))){
-    if(u.animState!=="work"&&u._enTrabajo!==true){u._animFrame=0;u._animTimer=0;}
-    u._enTrabajo=true;u.animState="work";
-    const W=anim.work,nW=(W.cuadros||[]).length||W.count||1;
+    // el Ingeniero de la IA saca el metal de las rocas con el taladro (si tiene esa animación)
+    const clave=u.state==="chop_ai"&&anim.taladro&&anim.taladro.sheet?"taladro":"work";
+    if(u.animState!==clave){u._animFrame=0;u._animTimer=0;}
+    u._enTrabajo=true;u.animState=clave;
+    const W=anim[clave],nW=(W.cuadros||[]).length||W.count||1;
     u._animTimer=(u._animTimer||0)+dt;
     if(u._animTimer>=1000/((W.fps||8)*VELOCIDAD_ANIMACION)){u._animTimer=0;u._animFrame=((u._animFrame||0)+1)%nW;}
     return;
