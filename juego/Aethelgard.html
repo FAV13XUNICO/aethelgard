@@ -1958,11 +1958,13 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   };
   // el toque de piano suena justo cuando aparece el logo
   const piano=INTRO.sonido?new Audio(rutaMusica(INTRO.sonido)):null;
+  // play() devuelve una promesa en los navegadores nuevos; en los viejos, nada
+  const tocar=a=>{try{const r=a.play();return r&&typeof r.then==="function"?r:Promise.resolve();}catch(e){return Promise.reject(e);}};
   if(piano){piano.preload="auto";piano.volume=Math.max(0,Math.min(1,(AJUSTES.musica??35)/100*1.6));}
   const empezarEstudio=()=>{
     if(fase!=="espera")return;fase="estudio";
     const clic=document.getElementById("intro-clic");if(clic)clic.remove();
-    luego(()=>{est.classList.add("ver");if(piano&&!piano._sonando){piano._sonando=true;piano.currentTime=0;piano.play().catch(()=>{});}},150);
+    luego(()=>{est.classList.add("ver");if(piano&&!piano._sonando){piano._sonando=true;piano.currentTime=0;tocar(piano).catch(()=>{});}},150);
     luego(()=>est.classList.remove("ver"),150+900+INTRO.segundos_estudio*1000);
     luego(aTitulo,150+900+INTRO.segundos_estudio*1000+900);
   };
@@ -1976,7 +1978,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     // se pide un clic antes del logo (así el piano suena junto con él)
     // (prueba con volumen 0 pero SIN "muted": así el navegador dice de verdad si deja sonar)
     const vol=piano.volume;piano.volume=0;
-    piano.play().then(()=>{piano.pause();piano.volume=vol;piano.currentTime=0;empezarEstudio();}).catch(err=>{
+    tocar(piano).then(()=>{piano.pause();piano.volume=vol;piano.currentTime=0;empezarEstudio();}).catch(err=>{
       piano.volume=vol;
       if(err&&err.name==="NotAllowedError"){
         negro.insertAdjacentHTML("beforeend",`<div id="intro-clic">${textoDibujado("HAZ CLIC PARA EMPEZAR","g",Math.max(0.7,Math.min(1.1,window.innerWidth/1200)))}</div>`);
@@ -1985,7 +1987,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     });
   })();
   const tecla=e=>{
-    if(fase==="espera"){if(piano){piano.play().then(()=>{piano.pause();piano.currentTime=0;}).catch(()=>{});}empezarEstudio();if(e&&e.type==="keydown"){e.preventDefault();e.stopPropagation();}return;}
+    if(fase==="espera"){if(piano){tocar(piano).then(()=>{piano.pause();piano.currentTime=0;}).catch(()=>{});}empezarEstudio();if(e&&e.type==="keydown"){e.preventDefault();e.stopPropagation();}return;}
     if(fase==="estudio"){aTitulo();return;}            // apretar algo durante el logo lo salta
     if(fase==="titulo"&&tit.classList.contains("ver")){fase="menu";if(typeof playTone==="function")try{playTone(660,0.08,'sine',0.04);}catch(err){}
       window.removeEventListener("keydown",tecla,true);capa.removeEventListener("pointerdown",tecla);
