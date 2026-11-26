@@ -3223,8 +3223,9 @@ function updateAnim(u,dt){
   if(anim.work&&anim.work.sheet&&!moving&&(u.state==="repairing"||u.state==="building"||u.state==="building_ai"||(u.state==="chop"&&u.chopProgress>0&&!(u.carrying>0&&u.carrying>=(typeof cargaMetal!=="undefined"?cargaMetal:99)))||(u.state==="chop_ai"&&u.chopProgress>0&&u.carrying<AI_CARGA_METAL))){
     // el Ingeniero de la IA saca el metal de las rocas con el taladro (si tiene esa animación)
     const clave=u.state==="chop_ai"&&anim.taladro&&anim.taladro.sheet?"taladro":"work";
-    if(u.animState!==clave){u._animFrame=0;u._animTimer=0;}
-    u._enTrabajo=true;u.animState=clave;
+    // (ojo: arriba animState ya se pisó con "idle", por eso se compara con la clave guardada)
+    if(u._enTrabajo!==true||u._claveTrabajo!==clave){u._animFrame=0;u._animTimer=0;}
+    u._enTrabajo=true;u._claveTrabajo=clave;u.animState=clave;
     const W=anim[clave],nW=(W.cuadros||[]).length||W.count||1;
     u._animTimer=(u._animTimer||0)+dt;
     if(u._animTimer>=1000/((W.fps||8)*VELOCIDAD_ANIMACION)){u._animTimer=0;u._animFrame=((u._animFrame||0)+1)%nW;}
