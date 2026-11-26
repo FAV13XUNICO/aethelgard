@@ -54,7 +54,14 @@ body.cargando-menu .splash-content{opacity:0;}
 #intro.fuera{opacity:0;pointer-events:none;transition:opacity .6s ease-out;}
 #intro-negro{position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .9s ease-in-out;}
 #intro-negro.fuera{opacity:0;pointer-events:none;}
-#intro-estudio{display:flex;align-items:center;gap:22px;opacity:0;transition:opacity .9s ease-in-out;}
+#intro-estudio{display:flex;flex-direction:column;align-items:center;gap:18px;opacity:0;transition:opacity .9s ease-in-out;text-align:center;padding:0 16px;}
+.intro-fila{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;}
+.intro-presenta{opacity:.85;}
+body.intro-entrando #vista-principal .splash-logo{opacity:0;}
+body.intro-entrando #vista-principal .menu-btn{opacity:0;}
+#vista-principal .menu-btn.aparece{animation:boton-aparece .5s ease-out both;}
+@keyframes boton-aparece{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+#intro-presiona.fuera{opacity:0!important;transition:opacity .25s;animation:none;}
 #intro-estudio.ver{opacity:1;}
 #intro-estudio img{height:min(18vh,150px);image-rendering:pixelated;}
 #intro-estudio .txt-comun{font:700 clamp(28px,5vw,56px) 'Cinzel',serif;color:#fff;letter-spacing:4px;}
@@ -1212,7 +1219,8 @@ const ARTE_MENU={
 ARTE_MENU.titulo="titulo_aethelgard.png";
 // ── INTRO AL ABRIR EL JUEGO (como la de Terraria): primero el estudio, después el título ──
 const INTRO={
-  estudio:"The Ink Owl",   // nombre del estudio (sale con tus letras grandes)
+  estudio:"The Ink Owl Entertainment",   // nombre del estudio (sale con tus letras grandes)
+  presenta:"presenta",                  // la palabra chiquita de abajo (como "Re-Logic presents")
   buho:"",                 // PNG del búho negrito que va al lado del nombre (cuando lo tengas)
   segundos_estudio:2.2,    // cuánto se queda el logo del estudio (sin contar las transiciones)
 };
@@ -1904,6 +1912,27 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
 (function intro(){
   const capa=document.getElementById("intro");if(!capa)return;
   const quitar=()=>{capa.classList.add("fuera");document.body.classList.remove("en-intro");setTimeout(()=>capa.remove(),700);};
+  // el título grande se achica y sube hasta su lugar en el menú, y los botones aparecen de arriba hacia abajo
+  const alMenu=()=>{
+    const pres=document.getElementById("intro-presiona");pres.classList.add("fuera");
+    document.body.classList.add("intro-entrando");document.body.classList.remove("en-intro");
+    const desde=document.querySelector("#intro-logo img")||document.getElementById("intro-logo");
+    const meta=document.querySelector("#vista-principal .splash-logo img")||document.querySelector("#vista-principal .splash-logo");
+    requestAnimationFrame(()=>{
+      const a=desde.getBoundingClientRect(),b=meta?meta.getBoundingClientRect():null;
+      const DUR=900;
+      if(b&&a.width>0&&b.width>0){
+        const k=b.width/a.width,dx=(b.left+b.width/2)-(a.left+a.width/2),dy=(b.top+b.height/2)-(a.top+a.height/2);
+        desde.style.animation="none";desde.style.transformOrigin="50% 50%";
+        desde.style.transition=`transform ${DUR}ms cubic-bezier(.45,.05,.2,1)`;
+        requestAnimationFrame(()=>{desde.style.transform=`translate(${dx}px,${dy}px) scale(${k})`;});
+      }
+      const botones=[...document.querySelectorAll("#vista-principal .menu-botones .menu-btn")];
+      botones.forEach((bt,i)=>{bt.style.animationDelay=(380+i*150)+"ms";bt.classList.add("aparece");});
+      setTimeout(()=>{document.body.classList.remove("intro-entrando");capa.remove();},DUR+30);
+      setTimeout(()=>botones.forEach(bt=>{bt.classList.remove("aparece");bt.style.animationDelay="";}),380+botones.length*150+600);
+    });
+  };
   // al volver al menú desde una partida no se repite (solo al abrir el juego)
   let saltar=false;try{saltar=sessionStorage.getItem("aeth_saltar_intro")==="1";sessionStorage.removeItem("aeth_saltar_intro");}catch(e){}
   if(saltar){capa.remove();document.body.classList.remove("en-intro");return;}
@@ -1911,7 +1940,9 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   let fase="estudio",timers=[];
   const luego=(f,ms)=>timers.push(setTimeout(f,ms));
   const escribir=()=>{ // con tus letras si ya cargaron
-    est.innerHTML=(INTRO.buho?`<img src="${rutaArte(INTRO.buho)}" alt="" onerror="this.remove()">`:"")+`<span>${textoDibujado(INTRO.estudio.toUpperCase(),"g",Math.max(1.4,Math.min(3,window.innerWidth/420)))}</span>`;
+    const kNom=Math.max(1,Math.min(2.2,window.innerWidth/620));
+    est.innerHTML=`<div class="intro-fila">${INTRO.buho?`<img src="${rutaArte(INTRO.buho)}" alt="" onerror="this.remove()">`:""}<span>${textoDibujado(INTRO.estudio.toUpperCase(),"g",kNom)}</span></div>`+
+      (INTRO.presenta?`<div class="intro-presenta">${textoDibujado(INTRO.presenta,"c",kNom*1.25,true)}</div>`:"");
     document.getElementById("intro-presiona").innerHTML=textoDibujado("PRESIONA CUALQUIER BOTÓN","g",Math.max(0.7,Math.min(1.2,window.innerWidth/1100)));
     const logo=document.getElementById("intro-logo");
     if(ARTE_MENU.titulo){const im=new Image();im.alt="Aethelgard";im.onload=()=>{logo.innerHTML="";logo.appendChild(im);};im.src=rutaArte(ARTE_MENU.titulo);logo.innerHTML=textoDibujado("AETHELGARD","g",3);}
@@ -1933,8 +1964,9 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   })();
   const tecla=e=>{
     if(fase==="estudio"){aTitulo();return;}            // apretar algo durante el logo lo salta
-    if(fase==="titulo"&&tit.classList.contains("ver")){fase="menu";if(typeof playTone==="function")try{playTone(660,0.08,'sine',0.04);}catch(err){}quitar();
-      window.removeEventListener("keydown",tecla,true);capa.removeEventListener("pointerdown",tecla);}
+    if(fase==="titulo"&&tit.classList.contains("ver")){fase="menu";if(typeof playTone==="function")try{playTone(660,0.08,'sine',0.04);}catch(err){}
+      window.removeEventListener("keydown",tecla,true);capa.removeEventListener("pointerdown",tecla);
+      alMenu();}
     if(e&&e.type==="keydown"){e.preventDefault();e.stopPropagation();}
   };
   window.addEventListener("keydown",tecla,true);capa.addEventListener("pointerdown",tecla);
