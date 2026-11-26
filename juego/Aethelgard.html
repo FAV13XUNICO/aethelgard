@@ -62,6 +62,8 @@ body.intro-entrando #vista-principal .menu-btn{opacity:0;}
 #vista-principal .menu-btn.aparece{animation:boton-aparece .5s ease-out both;}
 @keyframes boton-aparece{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
 #intro-presiona.fuera{opacity:0!important;transition:opacity .25s;animation:none;}
+#intro-clic{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;transition:opacity .4s;animation:intro-parpadeo 1.6s ease-in-out infinite;}
+#intro-clic.ver{opacity:1;}
 #intro-estudio.ver{opacity:1;}
 #intro-estudio img{height:min(18vh,150px);image-rendering:pixelated;}
 #intro-estudio .txt-comun{font:700 clamp(28px,5vw,56px) 'Cinzel',serif;color:#fff;letter-spacing:4px;}
@@ -1223,6 +1225,7 @@ const INTRO={
   presenta:"presenta",                  // la palabra chiquita de abajo (como "Re-Logic presents")
   buho:"",                 // PNG del búho negrito que va al lado del nombre (cuando lo tengas)
   segundos_estudio:2.2,    // cuánto se queda el logo del estudio (sin contar las transiciones)
+  sonido:"intro_the_ink_owl.mp3",   // el toque de piano del logo (carpeta musica; usa el volumen de la música)
 };
 ARTE_MENU.botones={jugar:"menu_jugar.png",ajustes:"menu_ajustes.png",logros:"menu_logros.png",enciclopedia:"menu_enciclopedia.png",creditos:"menu_creditos.png"};
 const EASTER_EGG_PROBABILIDAD=0.02;   // 2 % cada vez que aparece algo nuevo
@@ -1937,7 +1940,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   let saltar=false;try{saltar=sessionStorage.getItem("aeth_saltar_intro")==="1";sessionStorage.removeItem("aeth_saltar_intro");}catch(e){}
   if(saltar){capa.remove();document.body.classList.remove("en-intro");return;}
   const negro=document.getElementById("intro-negro"),est=document.getElementById("intro-estudio"),tit=document.getElementById("intro-titulo");
-  let fase="estudio",timers=[];
+  let fase="espera",timers=[];
   const luego=(f,ms)=>timers.push(setTimeout(f,ms));
   const escribir=()=>{ // con tus letras si ya cargaron
     const kNom=Math.max(1,Math.min(2.2,window.innerWidth/620));
@@ -1953,16 +1956,36 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     est.classList.remove("ver");negro.classList.add("fuera");
     setTimeout(()=>tit.classList.add("ver"),500);
   };
+  // el toque de piano suena justo cuando aparece el logo
+  const piano=INTRO.sonido?new Audio(rutaMusica(INTRO.sonido)):null;
+  if(piano){piano.preload="auto";piano.volume=Math.max(0,Math.min(1,(AJUSTES.musica??35)/100*1.6));}
+  const empezarEstudio=()=>{
+    if(fase!=="espera")return;fase="estudio";
+    const clic=document.getElementById("intro-clic");if(clic)clic.remove();
+    luego(()=>{est.classList.add("ver");if(piano&&!piano._sonando){piano._sonando=true;piano.currentTime=0;piano.play().catch(()=>{});}},150);
+    luego(()=>est.classList.remove("ver"),150+900+INTRO.segundos_estudio*1000);
+    luego(aTitulo,150+900+INTRO.segundos_estudio*1000+900);
+  };
   // espera un momento a tus letras (para que el nombre no salga primero en letra común)
   const t0=performance.now();
   (function arrancar(){
     if(!fuenteLista.g&&performance.now()-t0<1200){requestAnimationFrame(arrancar);return;}
     escribir();
-    luego(()=>est.classList.add("ver"),150);
-    luego(()=>est.classList.remove("ver"),150+900+INTRO.segundos_estudio*1000);
-    luego(aTitulo,150+900+INTRO.segundos_estudio*1000+900);
+    if(!piano||!(piano.volume>0)){empezarEstudio();return;}
+    // Los navegadores no dejan sonar nada hasta que la persona toca la página: si lo bloquea,
+    // se pide un clic antes del logo (así el piano suena junto con él)
+    // (prueba con volumen 0 pero SIN "muted": así el navegador dice de verdad si deja sonar)
+    const vol=piano.volume;piano.volume=0;
+    piano.play().then(()=>{piano.pause();piano.volume=vol;piano.currentTime=0;empezarEstudio();}).catch(err=>{
+      piano.volume=vol;
+      if(err&&err.name==="NotAllowedError"){
+        negro.insertAdjacentHTML("beforeend",`<div id="intro-clic">${textoDibujado("HAZ CLIC PARA EMPEZAR","g",Math.max(0.7,Math.min(1.1,window.innerWidth/1200)))}</div>`);
+        requestAnimationFrame(()=>{const c=document.getElementById("intro-clic");if(c)c.classList.add("ver");});
+      } else empezarEstudio();   // si el mp3 no está, la intro sigue sin sonido
+    });
   })();
   const tecla=e=>{
+    if(fase==="espera"){if(piano){piano.play().then(()=>{piano.pause();piano.currentTime=0;}).catch(()=>{});}empezarEstudio();if(e&&e.type==="keydown"){e.preventDefault();e.stopPropagation();}return;}
     if(fase==="estudio"){aTitulo();return;}            // apretar algo durante el logo lo salta
     if(fase==="titulo"&&tit.classList.contains("ver")){fase="menu";if(typeof playTone==="function")try{playTone(660,0.08,'sine',0.04);}catch(err){}
       window.removeEventListener("keydown",tecla,true);capa.removeEventListener("pointerdown",tecla);
