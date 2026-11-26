@@ -143,6 +143,14 @@ body:not(.cargando-menu) #carga-inicial{opacity:0;}
 #carga-relleno{height:100%;width:0;background:linear-gradient(90deg,#8a6a20,#ffd700);transition:width .2s;}
 .carga-estado{color:#8a7d60;font-size:10px;letter-spacing:2px;}
 /* ── Enciclopedia ── */
+.esc-zona.aj-rend{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;pointer-events:auto;}
+.aj-rend-ops{display:flex;gap:8px;}
+.aj-rend-etq{opacity:.9;margin-right:4px;}
+.aj-rend-op{cursor:pointer;padding:3px 8px;border:2px solid transparent;background:rgba(0,0,0,.35);}
+.aj-rend-op:hover{border-color:#8fb3d9;}
+.aj-rend-op.elegida{border-color:#ffd966;background:rgba(255,217,102,.18);}
+.ig-rend{font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;background:linear-gradient(180deg,#2e2214,#1e1608);border:2px solid var(--border-outer);color:var(--text-main);}
+.ig-rend.elegida{border-color:var(--gold);color:var(--gold-bright);box-shadow:0 0 8px rgba(200,168,75,.4);}
 .enc-cuerpo{display:flex;gap:14px;align-items:stretch;justify-content:center;width:min(1180px,calc(100vw - 32px));}
 .enc-caja-lista{width:min(760px,calc(100vw - 32px));max-height:min(58vh,560px);transition:width .2s;}
 .enc-cuerpo.con-detalle .enc-caja-lista{width:auto;flex:1 1 0;min-width:0;}
@@ -232,7 +240,7 @@ canvas{display:block;}
   display:flex;gap:5px;pointer-events:none;
 }
 .cg-chip{
-  width:26px;height:26px;
+  min-width:26px;height:30px;padding:0 5px;gap:3px;position:relative;
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg,#2e2214,#1a1208);
   border:2px solid var(--gold-dark);color:var(--gold-bright);
@@ -242,6 +250,10 @@ canvas{display:block;}
   transition:all .1s;
 }
 .cg-chip:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 0 10px rgba(200,168,75,.5);}
+.cg-chip.activo{border-color:#78dcff;box-shadow:0 0 10px rgba(120,220,255,.6);}
+.cg-n{position:absolute;top:-7px;left:-5px;font-size:10px;background:#1a1208;border:1px solid var(--gold-dark);padding:0 3px;line-height:12px;}
+.cg-ic{font-size:14px;line-height:1;}
+.cg-c{font-size:11px;color:#fff;}
 
 /* BOTTOM HUD */
 #hud{
@@ -1536,7 +1548,8 @@ function procesarSupervivencia(){
 }
 
 // ── Ajustes ──
-const AJUSTES=leerGuardado("aethelgard_ajustes",{musica:35,efectos:60,camara:20,bordes:true,pantallaCompleta:true,teclas:true});
+const AJUSTES=leerGuardado("aethelgard_ajustes",{musica:35,efectos:60,camara:20,bordes:true,pantallaCompleta:true,teclas:true,rendimiento:"auto"});
+if(!AJUSTES.rendimiento)AJUSTES.rendimiento="auto"; // "auto" | "alto" | "bajo"
 const SI_NO={true:{t:"Sí"},false:{t:"No"}};
 function guardarAjustes(){AJUSTES.musica=Math.round(musicVol*100);AJUSTES.efectos=Math.round(sfxVol*100);guardar("aethelgard_ajustes",AJUSTES);}
 function refrescarAjustes(){
@@ -1904,6 +1917,12 @@ function armarAjustesDibujado(){
   siNo("bordes",[247,192,287,223],[295,194,336,222]);
   siNo("pantallaCompleta",[184,249,224,280],[232,251,273,279]);
   ponerImg(e,ARTE_PANTALLAS.atras,PL+(599-184)/2,PT+336,{alt:"Atrás",onclick:()=>mostrarVista("principal")});
+  // ⚡ rendimiento (no está en el dibujo del panel: va como texto debajo)
+  const r=ponerZona(e,[PL+318,PT+236,PL+566,PT+290],"aj-rend");
+  const pintar=()=>{r.innerHTML=["auto","alto","bajo"].map(v=>`<span class="aj-rend-op${AJUSTES.rendimiento===v?" elegida":""}" data-v="${v}">${textoDibujado({auto:"AUTO",alto:"ALTO",bajo:"BAJO"}[v],"c",0.8)}</span>`).join("");
+    r.innerHTML=`<span class="aj-rend-etq">${textoDibujado("⚡ RENDIMIENTO","c",0.8)}</span><span class="aj-rend-ops">${r.innerHTML}</span>`;
+    r.querySelectorAll(".aj-rend-op").forEach(o=>o.onclick=()=>{elegirRendimiento(o.dataset.v);pintar();});};
+  pintar();
 }
 // ── PARTIDA PERSONALIZADA ──
 function armarPartidaDibujada(){
@@ -2257,7 +2276,35 @@ let ESCALA_SUELO=1;     // resolución del suelo horneado (con tope de memoria)
 let camX=0,camY=0;      // desplazamiento de la cámara, en píxeles de pantalla
 const NIEBLA_RES=0.5;   // la niebla es borrosa: se dibuja a la mitad de resolución
 const RES_MAX_PIXELES=48e6;   // tope del suelo horneado (≈190 MB): solo se nota con zoom muy alto en pantallas 4K/Retina
-function dprActual(){return window.devicePixelRatio||1;}
+// ── MODO RENDIMIENTO (equipos lentos) ──
+// En modo bajo el mapa se dibuja a menos resolución (70%) y a 30 cuadros por segundo;
+// la partida sigue corriendo a la misma velocidad porque la lógica va en pasos fijos.
+let modoBajo=AJUSTES.rendimiento==="bajo";
+function dprActual(){const d=window.devicePixelRatio||1;return modoBajo?Math.min(d,1)*0.7:Math.min(d,2);}
+function elegirRendimiento(v){
+  AJUSTES.rendimiento=v;guardarAjustes();
+  if(v==="bajo")ponerModoBajo(true,false);else if(v==="alto")ponerModoBajo(false,false);
+  else{_medida.listo=false;_medida.t=0;_medida.frames=0;}   // auto: vuelve a medir
+  document.querySelectorAll(".ig-rend").forEach(b=>b.classList.toggle("elegida",b.dataset.v===v));
+  if(typeof playTone==="function")playTone(560,0.04,'sine',0.03);
+}
+function ponerModoBajo(v,aviso){
+  if(modoBajo===!!v)return;modoBajo=!!v;
+  try{ajustarResolucion();}catch(e){}
+  if(aviso)triggerAlert(v?"⚡ Modo rendimiento activado: tu equipo iba lento (cámbialo en Opciones, F10)":"✨ Calidad alta","#78dcff",420);
+}
+// En "auto": si en los primeros 30 s de partida va a menos de 42 cuadros por segundo, pasa solo a modo bajo
+const _medida={t:0,frames:0,listo:false};
+function medirRendimiento(dt){
+  if(AJUSTES.rendimiento!=="auto"||modoBajo||_medida.listo)return;
+  if(gameTime<3)return;                       // los primeros segundos cargan dibujos: no cuentan
+  _medida.t+=dt;_medida.frames++;
+  if(_medida.t>=6000){
+    const fps=_medida.frames/(_medida.t/1000);
+    if(fps<42)ponerModoBajo(true,true);
+    _medida.t=0;_medida.frames=0;if(gameTime>33)_medida.listo=true;
+  }
+}
 function calcularEscalaSuelo(){
   let e=zoomLevel*dprActual();
   e=Math.min(e,16000/CANVAS_W,Math.sqrt(RES_MAX_PIXELES/(CANVAS_W*CANVAS_H)));
@@ -2614,7 +2661,7 @@ function seleccionarMismoTipo(u){
   const vb=getVisibleWorldBounds();
   const pool=u.type==="worker"?workers:soldiers;
   selectedUnits=pool.filter(o=>o.name===u.name&&!o.hidden&&o.x>=vb.minX&&o.x<=vb.maxX&&o.y>=vb.minY&&o.y<=vb.maxY).slice(0,40);
-  selected=selectedUnits.length===1?selectedUnits[0]:null;tabFocusType=null;grupoActivo=null;updateBottomUI();
+  selected=selectedUnits.length===1?selectedUnits[0]:null;tabFocusType=null;grupoActivo=null;grupoActivoN=null;updateBottomUI();
 }
 // Escribe la letra de cada atajo en la esquina de su botón.
 function ponerTeclas(){
@@ -2653,7 +2700,7 @@ atajosAyuda.innerHTML=`<div class="aa-caja"><div class="aa-cab">⌨️ Atajos de
 <p><kbd>Alt</kbd> (mantener) ver las barras de vida</p>
 <p><kbd>F</kbd> niebla de guerra encendida/apagada</p>
 <b>Selección</b>
-<p><kbd>Ctrl</kbd>+<kbd>1-9</kbd> guardar grupo · <kbd>1-9</kbd> elegir grupo (dos veces: centrar)</p>
+<p><kbd>Ctrl</kbd>+<kbd>1-9</kbd> guardar grupo (unidades o un edificio) · <kbd>1-9</kbd> elegir grupo (dos veces: centrar)</p>
 <p><kbd>Shift</kbd>+<kbd>1-9</kbd> agregar la selección al grupo</p>
 <p><kbd>Tab</kbd> cambiar qué tipo del grupo muestra sus órdenes</p>
 <p><kbd>F</kbd> cambiar formación (grupo elegido) · <kbd>F2</kbd> Línea · <kbd>F3</kbd> Cuña · <kbd>F4</kbd> Dispersa · <kbd>F5</kbd> Círculo</p>
@@ -2665,7 +2712,8 @@ atajosAyuda.innerHTML=`<div class="aa-caja"><div class="aa-cab">⌨️ Atajos de
 <div><b>Órdenes</b>
 <p><kbd>M</kbd> mover (y clic) · <kbd>S</kbd> parar · <kbd>H</kbd> mantener posición</p>
 <p><kbd>A</kbd> atacar (y clic) · <kbd>P</kbd> patrullar (y clic)</p>
-<p><kbd>Shift</kbd>+orden: ponerla en cola</p>
+<p><b>Clic derecho</b> sobre un enemigo: atacarlo</p>
+<p><kbd>Shift</kbd> (mantener) + órdenes: se ponen en cola y se hacen una tras otra: mover, atacar, atacar-moviendo, construir varios edificios, reparar, minar o picar. Los puntos numerados muestran el orden.</p>
 <p><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> habilidades del héroe</p>
 <p><kbd>Esc</kbd> cancelar la orden o el menú</p>
 <b>Edificios y obrero</b>
@@ -2741,6 +2789,7 @@ window.addEventListener("keydown",e=>{
     const n=e.code.slice(5);
     const g=(controlGroups[n]||[]).filter(u=>soldiers.includes(u)||workers.includes(u));
     for(const u of selectedUnits)if(!g.includes(u))g.push(u);
+    grupoActivoN=null;
     controlGroups[n]=g;updateControlGroupBar();
     triggerAlert(`➕ Agregado al grupo ${n} (${g.length})`,"#88ddff",200);
     e.stopImmediatePropagation();return;
@@ -2796,19 +2845,25 @@ window.addEventListener("keydown",e=>{
         controlGroups[groupNum]=[...selectedUnits];
         triggerAlert(`📌 Grupo ${groupNum} asignado (${selectedUnits.length} unidad${selectedUnits.length>1?'es':''})`,"#88ddff",260);
         updateControlGroupBar();
+      } else if(selected&&structures.includes(selected)&&selected.team==="player"){
+        // también se puede guardar un edificio (ej.: Ctrl+4 en la Forja y luego 4 para entrenar sin buscarla)
+        controlGroups[groupNum]=[selected];
+        triggerAlert(`📌 Grupo ${groupNum}: ${selected.name}`,"#88ddff",260);
+        updateControlGroupBar();
       }
     } else {
       // N solo: selecciona el grupo, filtrando unidades que ya murieron
       const grp=controlGroups[groupNum];
       if(grp&&grp.length>0){
-        const alive=grp.filter(u=>soldiers.includes(u)||workers.includes(u));
+        const alive=grp.filter(miembroVivo);
         controlGroups[groupNum]=alive; // limpia muertas del grupo permanentemente
         if(alive.length>0){
           const now=performance.now();
           const isDoubleTap=(lastGroupSelectKey===groupNum&&(now-lastGroupSelectTime)<400);
           lastGroupSelectKey=groupNum;lastGroupSelectTime=now;
-          selectedUnits=alive;selected=alive[0];
-          updateBottomUI();
+          if(structures.includes(alive[0])){selectedUnits=[];selected=alive[0];}
+          else{selectedUnits=alive;selected=alive[0];}
+          grupoActivoN=groupNum;updateBottomUI();updateControlGroupBar();
           if(isDoubleTap){
             // doble-tap: centra la cámara en el grupo, como en WC3
             const avgX=alive.reduce((s,u)=>s+u.x,0)/alive.length;
@@ -2839,26 +2894,38 @@ document.getElementById("idle-worker-icon").onclick=()=>{
 // selecciona y centra la cámara en él, igual que en Warcraft 3.
 function selectHero(){
   if(!(soldiers.includes(hero)&&hero.hp>0))return;
-  selected=hero;selectedUnits=[hero];tabFocusType=null;grupoActivo=null;tabTypeCycle=[];tabTypeIndex=0;
+  selected=hero;selectedUnits=[hero];tabFocusType=null;grupoActivo=null;grupoActivoN=null;tabTypeCycle=[];tabTypeIndex=0;
   updateBottomUI();
   centerCameraOn(hero.x,hero.y);
 }
 document.getElementById("hero-icon").onclick=selectHero;
 
 // Refresca los indicadores numéricos del HUD que muestran qué grupos tienen unidades vivas
+function miembroVivo(u){return soldiers.includes(u)||workers.includes(u)||(structures.includes(u)&&u.team==="player");}
+let grupoActivoN=null,_firmaGrupos="";
+// La barra de grupos: número + dibujo de la unidad que más hay + cuántas son (como en SC2)
 function updateControlGroupBar(){
   const bar=document.getElementById("control-group-bar");
   if(!bar)return;
-  bar.innerHTML="";
+  const datos=[];
   for(let n=1;n<=9;n++){
-    const grp=controlGroups[n];
-    const alive=grp?grp.filter(u=>soldiers.includes(u)||workers.includes(u)):[];
-    if(alive.length===0)continue;
+    const alive=(controlGroups[n]||[]).filter(miembroVivo);
+    if(!alive.length)continue;
+    const cuenta={};for(const u of alive)cuenta[u.name]=(cuenta[u.name]||0)+1;
+    const princ=Object.keys(cuenta).sort((a,b)=>cuenta[b]-cuenta[a])[0];
+    datos.push([n,alive,princ]);
+  }
+  const firma=datos.map(([n,a,p])=>n+":"+a.length+":"+p).join("|")+"#"+grupoActivoN;
+  if(firma===_firmaGrupos)return;_firmaGrupos=firma;   // solo se redibuja si cambió algo
+  bar.innerHTML="";
+  for(const [n,alive,princ] of datos){
     const chip=document.createElement("div");
-    chip.className="cg-chip";
-    chip.textContent=`${n}`;
-    chip.title=`Grupo ${n}: ${alive.length} unidad${alive.length>1?'es':''}`;
-    chip.onclick=()=>{selectedUnits=alive;selected=alive[0];updateBottomUI();};
+    chip.className="cg-chip"+(String(grupoActivoN)===String(n)?" activo":"");
+    const ic=(typeof PORTRAITS!=="undefined"&&PORTRAITS[princ])||"●";
+    chip.innerHTML=`<span class="cg-n">${n}</span><span class="cg-ic">${ic}</span><span class="cg-c">${structures.includes(alive[0])?"":alive.length}</span>`;
+    chip.title=structures.includes(alive[0])?`Grupo ${n}: ${alive[0].name}  (tecla ${n}; dos veces para ir)`:`Grupo ${n}: ${alive.length} unidad${alive.length>1?'es':''}  (tecla ${n}; dos veces para ir)`;
+    chip.onclick=()=>{if(structures.includes(alive[0])){selectedUnits=[];selected=alive[0];}else{selectedUnits=alive;selected=alive[0];}grupoActivoN=n;updateBottomUI();updateControlGroupBar();};
+    chip.ondblclick=()=>{const c=structures.includes(alive[0])?{x:alive[0].x+alive[0].size/2,y:alive[0].y+alive[0].size/2}:centroDe(alive);centerCameraOn(c.x,c.y);};
     bar.appendChild(chip);
   }
 }
@@ -4176,9 +4243,24 @@ function followPath(u,speed){return irHacia(u,u.targetX,u.targetY,speed);}
 // ═══════════════ COLA DE ÓRDENES (shift + click derecho) ═══════════════
 // Ejecuta una orden ya "desempaquetada" sobre una unidad — es la misma lógica
 // que antes vivía inline en el listener de contextmenu, ahora reutilizable.
+function objetivoVivo(t){return !!t&&(t.hp==null||t.hp>0)&&(enemies.includes(t)||structures.includes(t)||neutralUnits.includes(t));}
 function issueOrder(u,order){
   u.mantener=false; // cualquier orden nueva cancela "mantener posición"
-  u.targetBuild=null;
+  u.targetBuild=null;u._amove=null;u._ataqueOrdenado=false;
+  if(order.type==="attack"&&u.type==="soldier"){
+    if(!objetivoVivo(order.target)){advanceQueue(u);return;}
+    patrols=patrols.filter(p=>p.unit!==u);
+    const t=order.target;u.state="attack";u.attackTarget=t;u.forceMove=false;u._ataqueOrdenado=true;
+    u.targetX=t.size!=null&&t.radius==null?t.x+t.size/2:t.x;u.targetY=t.size!=null&&t.radius==null?t.y+t.size/2:t.y;
+    return;
+  }
+  if(order.type==="amove"&&u.type==="soldier"){ // atacar-moviendo: avanza y pelea con lo que encuentre
+    patrols=patrols.filter(p=>p.unit!==u);
+    u.state="move";u.attackTarget=null;u.forceMove=false;u._amove={x:order.x,y:order.y};
+    setUnitDestination(u,order.x,order.y);return;
+  }
+  if(order.type==="attack"){const t=order.target;order={type:"move",x:t.x+(t.size||0)/2,y:t.y+(t.size||0)/2};}
+  if(order.type==="amove")order={type:"move",x:order.x,y:order.y};
   if(order.type==="repair"){
     u.state="goto_repair";u.targetBuild=order.structure;u._deudaRep=0;
   } else if(order.type==="build"){
@@ -4197,7 +4279,8 @@ function issueOrder(u,order){
 
 // Punto en el mundo al que apunta una orden (para dibujar la línea de ruta).
 function orderPos(order){
-  if(order.type==="move")return{x:order.x,y:order.y};
+  if(order.type==="move"||order.type==="amove")return{x:order.x,y:order.y};
+  if(order.type==="attack"){const t=order.target;if(!t)return null;return t.size!=null&&t.radius==null?{x:t.x+t.size/2,y:t.y+t.size/2}:{x:t.x,y:t.y};}
   if(order.type==="chop")return{x:order.tree.x+20,y:order.tree.y+20};
   if(order.type==="mine"){const m=mines[order.idx];return m?{x:m.x,y:m.y}:null;}
   if(order.type==="build"||order.type==="repair")return{x:order.structure.x+order.structure.size/2,y:order.structure.y+order.structure.size/2};
@@ -4957,7 +5040,7 @@ function updateBottomUIPanel(){
         else{if(grupoActivo&&grupoActivo.name!==u.name)buildMenuOpen=false;grupoActivo=u;tabFocusType=u.name;}
         updateBottomUI();
       };
-      card.ondblclick=()=>{selected=u;selectedUnits=[u];tabFocusType=null;grupoActivo=null;tabTypeCycle=[];tabTypeIndex=0;buildMenuOpen=false;updateBottomUI();};
+      card.ondblclick=()=>{selected=u;selectedUnits=[u];tabFocusType=null;grupoActivo=null;grupoActivoN=null;tabTypeCycle=[];tabTypeIndex=0;buildMenuOpen=false;updateBottomUI();};
       groupStripEl.appendChild(card);
     }
   }
@@ -5206,7 +5289,7 @@ function aplicarReunion(str,u){
 function engageTarget(units,target){
   for(let u of units){
     if(u.type!=="soldier")continue;
-    u.state="attack";u.attackTarget=target;u.forceMove=false;u.orderQueue=[];
+    u.state="attack";u.attackTarget=target;u.forceMove=false;u.orderQueue=[];u._amove=null;u._ataqueOrdenado=false;
     let tx=target.size!=null?target.x+target.size/2:target.x;
     let ty=target.size!=null?target.y+target.size/2:target.y;
     u.targetX=tx;u.targetY=ty;
@@ -5264,7 +5347,7 @@ canvas.addEventListener("dblclick",e=>{
   const vb=getVisibleWorldBounds();
   const matches=pool.filter(u=>u.name===target.name&&u.x>=vb.minX&&u.x<=vb.maxX&&u.y>=vb.minY&&u.y<=vb.maxY).slice(0,40);
   selectedUnits=matches;selected=matches.length===1?matches[0]:null;
-  tabFocusType=null;grupoActivo=null;tabTypeCycle=[];tabTypeIndex=0; // una selección nueva reinicia el resaltado de Tab
+  tabFocusType=null;grupoActivo=null;grupoActivoN=null;tabTypeCycle=[];tabTypeIndex=0; // una selección nueva reinicia el resaltado de Tab
   updateBottomUI();
   triggerAlert(`👥 ${matches.length} unidades seleccionadas (${target.name})`,"#88ddff",200);
 });
@@ -5285,6 +5368,7 @@ canvas.addEventListener("mouseup",e=>{
       movePending=false;
       const pts=computeFormationOffsets(selectedUnits,world.x,world.y);
       selectedUnits.forEach((u,i)=>{if(u.type==="worker"||u.type==="soldier"){commandUnit(u,{type:"move",x:pts[i].x,y:pts[i].y},e.shiftKey);u.forceMove=true;}});
+      if(e.shiftKey)movePending=true;
       spawnPing(world.x,world.y,"mover");updateBottomUI();return;
     }
     if(patrolPending&&selectedUnits.length>0){
@@ -5297,12 +5381,17 @@ canvas.addEventListener("mouseup",e=>{
       for(let en of enemies)if(Math.hypot(world.x-en.x,world.y-en.y)<=en.radius+6){clickedEnemy=en;break;}
       if(!clickedEnemy)for(let n of neutralUnits)if(Math.hypot(world.x-n.x,world.y-n.y)<=n.radius+6){clickedEnemy=n;break;}
       if(!clickedEnemy)for(let str of structures)if(str.team==="enemy"&&world.x>str.x-4&&world.x<str.x+str.size+4&&world.y>str.y-4&&world.y<str.y+str.size+4){clickedEnemy=str;break;}
+      if(e.shiftKey&&atkUnits.length>0){
+        for(const u of atkUnits)commandUnit(u,clickedEnemy?{type:"attack",target:clickedEnemy}:{type:"amove",x:world.x,y:world.y},true);
+        spawnPing(world.x,world.y,"atacar");triggerAlert("➕ Ataque añadido a la cola","#ff9966",160);
+        attackPending=true;updateBottomUI();return;   // con Shift apretado puedes seguir marcando puntos
+      }
       if(clickedEnemy&&atkUnits.length>0){
         engageTarget(atkUnits,clickedEnemy);
         spawnPing(clickedEnemy.size!=null&&clickedEnemy.radius==null?clickedEnemy.x+clickedEnemy.size/2:clickedEnemy.x,clickedEnemy.size!=null&&clickedEnemy.radius==null?clickedEnemy.y+clickedEnemy.size/2:clickedEnemy.y,"atacar");
         skillDesc.textContent="⚔️ ¡Atacando objetivo!";playTone(220,0.12,'square',0.04);
       } else if(atkUnits.length>0){
-        for(let u of atkUnits){u.state="move";u.attackTarget=null;u.forceMove=false;u.orderQueue=[];setUnitDestination(u,world.x,world.y);}
+        for(let u of atkUnits){u.orderQueue=[];issueOrder(u,{type:"amove",x:world.x,y:world.y});}
         spawnPing(world.x,world.y,"atacar");
       }
       attackPending=false;updateBottomUI();return;
@@ -5332,10 +5421,10 @@ canvas.addEventListener("mouseup",e=>{
       if(propia&&e.shiftKey){
         const i=selectedUnits.indexOf(propia);
         if(i>=0)selectedUnits.splice(i,1);else if(selectedUnits.length<40)selectedUnits.push(propia);
-        selected=selectedUnits.length===1?selectedUnits[0]:null;tabFocusType=null;grupoActivo=null;updateBottomUI();return;
+        selected=selectedUnits.length===1?selectedUnits[0]:null;tabFocusType=null;grupoActivo=null;grupoActivoN=null;updateBottomUI();return;
       }
     }
-    selected=null;selectedUnits=[];tabFocusType=null;grupoActivo=null;tabTypeCycle=[];tabTypeIndex=0;
+    selected=null;selectedUnits=[];tabFocusType=null;grupoActivo=null;grupoActivoN=null;tabTypeCycle=[];tabTypeIndex=0;
     for(let s of soldiers)if(Math.hypot(world.x-s.x,world.y-s.y)<=Math.max(s.radius+5,20)){selected=s;selectedUnits=[s];updateBottomUI();return;}
     for(let w2 of workers)if(!w2.hidden&&Math.hypot(world.x-w2.x,world.y-w2.y)<=20){selected=w2;selectedUnits=[w2];updateBottomUI();return;}
     for(let en of enemies)if(Math.hypot(world.x-en.x,world.y-en.y)<=Math.max(en.radius+5,20)){selected=en;selectedUnits=[en];updateBottomUI();return;}
@@ -5347,7 +5436,7 @@ canvas.addEventListener("mouseup",e=>{
     let minX=Math.min(dragStartX,dragEndX),maxX=Math.max(dragStartX,dragEndX);
     let minY=Math.min(dragStartY,dragEndY),maxY=Math.max(dragStartY,dragEndY);
     if(!e.shiftKey)selectedUnits=[]; // Shift+recuadro: suma a la selección
-    selected=null;tabFocusType=null;grupoActivo=null;tabTypeCycle=[];tabTypeIndex=0;
+    selected=null;tabFocusType=null;grupoActivo=null;grupoActivoN=null;tabTypeCycle=[];tabTypeIndex=0;
     for(let w2 of workers){if(w2.hidden||selectedUnits.includes(w2))continue;const p=worldToIso(w2.x,w2.y);if(p.x>=minX&&p.x<=maxX&&p.y>=minY&&p.y<=maxY&&selectedUnits.length<40)selectedUnits.push(w2);}
     for(let s of soldiers){if(selectedUnits.includes(s))continue;const p=worldToIso(s.x,s.y);if(p.x>=minX&&p.x<=maxX&&p.y>=minY&&p.y<=maxY&&selectedUnits.length<40)selectedUnits.push(s);}
     if(selectedUnits.length===1)selected=selectedUnits[0];
@@ -5377,6 +5466,22 @@ canvas.addEventListener("contextmenu",e=>{
     patrolPending=false;skillDesc.textContent="Patrulla asignada";return;
   }
   const shiftQueue=e.shiftKey;
+  // clic derecho sobre un enemigo (unidad, criatura o edificio): los soldados lo atacan
+  {
+    let obj=null;
+    for(const en of enemies)if(isTileVisible(en.x,en.y)&&Math.hypot(world.x-en.x,world.y-en.y)<=en.radius+8){obj=en;break;}
+    if(!obj)for(const n of neutralUnits)if(isTileVisible(n.x,n.y)&&Math.hypot(world.x-n.x,world.y-n.y)<=n.radius+8){obj=n;break;}
+    if(!obj)for(const st of structures)if(st.team==="enemy"&&world.x>st.x-4&&world.x<st.x+st.size+4&&world.y>st.y-4&&world.y<st.y+st.size+4&&isTileVisible(st.x+st.size/2,st.y+st.size/2)){obj=st;break;}
+    const atk=selectedUnits.filter(u=>u.type==="soldier");
+    if(obj&&atk.length){
+      for(const u of atk)commandUnit(u,{type:"attack",target:obj},shiftQueue);
+      const ox=obj.size!=null&&obj.radius==null?obj.x+obj.size/2:obj.x,oy=obj.size!=null&&obj.radius==null?obj.y+obj.size/2:obj.y;
+      spawnPing(ox,oy,"atacar");playTone(220,0.1,'square',0.035);
+      if(shiftQueue)triggerAlert("➕ Ataque añadido a la cola","#ff9966",160);
+      for(const u of selectedUnits)if(u.type==="worker")commandUnit(u,{type:"move",x:ox,y:oy},shiftQueue);
+      return;
+    }
+  }
   // ping
   spawnPing(world.x,world.y);
   let clickedStr=structures.find(s=>world.x>s.x&&world.x<s.x+s.size&&world.y>s.y&&world.y<s.y+s.size);
@@ -6662,6 +6767,7 @@ function update(dt){
   revisarUsoPendiente();
   revisarCambioDiaNoche();
   if((frameMov&3)===0)dibujarReloj();
+  if((frameMov&31)===0)updateControlGroupBar();
   grabarRepeticion();
   if(gameTime-(update._revLogros||0)>=1){update._revLogros=gameTime;revisarLogros();} // una vez por segundo de juego
   actualizarCursor();
@@ -6781,11 +6887,11 @@ function update(dt){
     let spd=s.speed*aura*fb.vel;
     if((s._armorForm||0)!==fb.armor){s.armor=(s.armor||0)-(s._armorForm||0)+fb.armor;s._armorForm=fb.armor;}
     let tgt=null,md=Infinity;
-    if(s.attackTarget&&((s.attackTarget.hp!=null&&s.attackTarget.hp>0)||(s.attackTarget.hp==null))){
+    if(s.attackTarget){
       let at=s.attackTarget;
       let stillExists=enemies.includes(at)||structures.includes(at)||neutralUnits.includes(at);
-      if(stillExists&&at.hp>0){tgt=at;md=Math.hypot(s.x-(at.size?at.x+at.size/2:at.x),s.y-(at.size?at.y+at.size/2:at.y));}
-      else s.attackTarget=null;
+      if(stillExists&&(at.hp==null||at.hp>0)){tgt=at;md=Math.hypot(s.x-(at.size?at.x+at.size/2:at.x),s.y-(at.size?at.y+at.size/2:at.y));}
+      else{s.attackTarget=null;if(s._ataqueOrdenado){s._ataqueOrdenado=false;if(s.orderQueue&&s.orderQueue.length)advanceQueue(s);}}
     }
     if(!tgt){
       for(let en of enemies){if(!isTileVisible(en.x,en.y))continue;let d=Math.hypot(s.x-en.x,s.y-en.y);if(d<md){md=d;tgt=en;}}
@@ -6795,6 +6901,13 @@ function update(dt){
       for(let str of structures){if(str.team==="enemy"){if(!isTileVisible(str.x+str.size/2,str.y+str.size/2))continue;let d=Math.hypot(s.x-(str.x+str.size/2),s.y-(str.y+str.size/2));if(d<md){md=d;tgt=str;}}}
     }
     let chaseR=s.subType==="range"?s.range:900;
+    // con órdenes en cola (Shift) o atacando-moviendo, no se queda persiguiendo enemigos lejanos:
+    // pelea solo con lo que tenga encima y sigue con lo que le mandaste
+    if(s.state==="attack"&&!s.attackTarget){
+      const alcance=s.subType==="range"?s.range:ALCANCE_MELEE+40;
+      if(s.orderQueue&&s.orderQueue.length&&!(tgt&&md<alcance))advanceQueue(s);
+      else if(s._amove&&!(tgt&&md<chaseR*0.5)){const a=s._amove;s.state="move";setUnitDestination(s,a.x,a.y);}
+    }
     // auto-attack + retreat on right-click (forceMove = orden de mover explícita, no se interrumpe por enemigos cercanos)
     if(s.state==="move"&&!s.forceMove&&md<chaseR*0.5&&tgt){s.state="attack";}
     if(tgt&&md<chaseR&&s.state!=="move"){
@@ -6805,7 +6918,8 @@ function update(dt){
       fd=Math.round(fd*fb.dano);
       if(s.subType==="range"){if(distA(s,tgt)>s.range){if(!s.mantener)irHacia(s,tx,ty,spd);}else if(s.attackTimer<=0){projectiles.push({x:s.x,y:s.y,target:tgt,speed:6,damage:fd,color:"#ffaa33",owner:s});s.attackTimer=s.attackCooldown||50;}}
       else{if(distA(s,tgt)>ALCANCE_MELEE){if(!s.mantener)irHacia(s,tx,ty,spd);}else if(s.attackTimer<=0){const prevHp=tgt.hp;const dmg=Math.max(1,fd-(tgt.armor||0));tgt.hp-=dmg;if(tgt.hp!==prevHp){addHitFlash(tgt);spawnHitSparks(tx,tgt.size?tgt.y+tgt.size/2:tgt.y,dmg>=30);spawnDamageText(tgt.x,(tgt.size?tgt.y:tgt.y-20),dmg,tgt===hero);if(tgt.hp<=0)creditKill(s,tgt);}s.attackTimer=s.attackCooldown||50;}}
-    } else if(s.state==="move"&&s.targetX!=null){if(followPath(s,spd)){s.forceMove=false;advanceQueue(s);}}
+    } else if(s.state==="move"&&s.targetX!=null){if(followPath(s,spd)){s.forceMove=false;s._amove=null;advanceQueue(s);}}
+
     if(s.hp<s.lastHp&&s.hp>0){marcarEvento(s.x,s.y);pingMapa(s.x,s.y,"ataque",s);
       if(performance.now()-(update._avisoTropas||0)>8000){update._avisoTropas=performance.now();triggerAlert("⚠️ ¡Tropas bajo ataque! (Espacio para ir)","#ff4444",220);}}
     s.lastHp=s.hp;
@@ -7617,13 +7731,18 @@ function draw(){
     if(!u.orderQueue||u.orderQueue.length===0)continue;
     let px=u.targetX!=null?u.targetX:u.x,py=u.targetY!=null?u.targetY:u.y;
     let sPrev=worldToIso(px,py);
-    ctx.strokeStyle="rgba(120,220,255,0.55)";ctx.lineWidth=1;ctx.setLineDash([4,4]);
-    ctx.beginPath();ctx.moveTo(sPrev.x,sPrev.y);
-    const pts=[];
-    for(const ord of u.orderQueue){const p=orderPos(ord);if(!p)continue;const sp2=worldToIso(p.x,p.y);ctx.lineTo(sp2.x,sp2.y);pts.push(sp2);}
-    ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle="rgba(120,220,255,0.85)";
-    for(const sp2 of pts){ctx.beginPath();ctx.arc(sp2.x,sp2.y,3.5,0,Math.PI*2);ctx.fill();}
+    // cada tramo con el color de su orden: celeste mover, rojo atacar, naranja construir/reparar, verde recolectar
+    const COL={move:"120,220,255",amove:"255,110,90",attack:"255,70,70",build:"255,170,60",repair:"255,170,60",mine:"110,230,120",chop:"110,230,120"};
+    ctx.lineWidth=1.2;ctx.setLineDash([4,4]);
+    let k=0;
+    for(const ord of u.orderQueue){
+      const p=orderPos(ord);if(!p)continue;const sp2=worldToIso(p.x,p.y),c=COL[ord.type]||COL.move;
+      ctx.strokeStyle=`rgba(${c},0.6)`;ctx.beginPath();ctx.moveTo(sPrev.x,sPrev.y);ctx.lineTo(sp2.x,sp2.y);ctx.stroke();
+      ctx.setLineDash([]);ctx.fillStyle=`rgba(${c},0.9)`;ctx.beginPath();ctx.arc(sp2.x,sp2.y,4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#000";ctx.font="bold 7px sans-serif";ctx.textAlign="center";ctx.fillText(String(++k),sp2.x,sp2.y+2.5);ctx.setLineDash([4,4]);
+      sPrev=sp2;
+    }
+    ctx.setLineDash([]);
   }
 
   if(fogEnabled){drawFog();fogBorrada=false;}
@@ -7763,14 +7882,22 @@ function loopRepeticion(ts){
 }
 
 // ═══════════════ GAME LOOP ═══════════════
-let lastTime=null;
+let lastTime=null,_acumLogica=0,_ultimoDibujo=0;
+const PASO_LOGICA=1000/60;
+// La lógica avanza en pasos fijos de 1/60 s: la partida va a la misma velocidad en una
+// pantalla de 144 Hz que en una compu lenta que dibuja 30 cuadros por segundo.
 function loop(ts){
   if(gameOver)return;
   if(lastTime===null)lastTime=ts;
-  const dt=Math.min(ts-lastTime,50);
+  const dt=Math.min(ts-lastTime,100);
   lastTime=ts;
-  if(juegoPausado()){draw();requestAnimationFrame(loop);return;}
-  update(dt);draw();
+  if(juegoPausado()){_acumLogica=0;draw();requestAnimationFrame(loop);return;}
+  _acumLogica+=dt;let pasos=0;
+  while(_acumLogica>=PASO_LOGICA-0.5&&pasos<4){update(PASO_LOGICA);_acumLogica-=PASO_LOGICA;pasos++;}
+  if(pasos===4)_acumLogica=0;                 // demasiado atrasado: no intenta ponerse al día (evita el "efecto bola de nieve")
+  if(_acumLogica<0)_acumLogica=0;
+  medirRendimiento(dt);
+  if(!modoBajo||ts-_ultimoDibujo>=31){if(pasos>0||ts-_ultimoDibujo>=31){draw();_ultimoDibujo=ts;}}
   requestAnimationFrame(loop);
 }
 
@@ -7906,6 +8033,7 @@ function syncIngameDifficultyButtons(){
 function toggleIngameOptions(){
   const el=document.getElementById("ingame-options");el.style.display=el.style.display==="flex"?"none":"flex";
   syncIngameDifficultyButtons();
+  document.querySelectorAll(".ig-rend").forEach(b=>b.classList.toggle("elegida",b.dataset.v===AJUSTES.rendimiento));
   document.getElementById("ig-vol-music").value=Math.round(musicVol*100);
   document.getElementById("ig-vol-music-val").textContent=Math.round(musicVol*100)+"%";
   document.getElementById("ig-vol-sfx").value=Math.round(sfxVol*100);
@@ -8022,6 +8150,14 @@ window.addEventListener("click", () => {
         <button type="button" class="ig-diff" id="ig-diff-easy" onclick="setDifficultyIngame('easy')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">🌿 Fácil</button>
         <button type="button" class="ig-diff" id="ig-diff-normal" onclick="setDifficultyIngame('normal')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">⚔️ Normal</button>
         <button type="button" class="ig-diff" id="ig-diff-hard" onclick="setDifficultyIngame('hard')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">💀 Difícil</button>
+      </div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="color:var(--text-dim);font-size:10px;margin-bottom:8px;">⚡ Rendimiento (Bajo: menos resolución y 30 cuadros por segundo, para equipos lentos)</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button type="button" class="ig-rend" data-v="auto" onclick="elegirRendimiento('auto')">AUTO</button>
+        <button type="button" class="ig-rend" data-v="alto" onclick="elegirRendimiento('alto')">ALTO</button>
+        <button type="button" class="ig-rend" data-v="bajo" onclick="elegirRendimiento('bajo')">BAJO</button>
       </div>
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
