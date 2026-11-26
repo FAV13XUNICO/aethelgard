@@ -469,6 +469,7 @@ body.cursor-juego :is(#map-wrapper,#top-bar,#hero-icon,#control-group-bar,#idle-
    Los botones quedan DETRÁS de tu dibujo: se ven por el hueco y el borde del HUD los tapa. */
 #hud-dibujo>.hd-hueco{z-index:0;} #hud-dibujo>.hd-bloqueo{z-index:1;} #hud-dibujo>#hud-commands{z-index:2;}
 #hud-dibujo>.hd-imagen{z-index:3;} #hud-dibujo>.hd-zona,#hud-dibujo>#hud-inventory{z-index:4;}
+#hud-dibujo>.hd-zona.hd-retrato{z-index:2;}   /* el retrato va DETRÁS del panel: el marco del HUD lo encuadra */
 #hud-dibujo .command-btn.autocast::after{inset:1px;}
 #hud-dibujo .hd-hueco{background:radial-gradient(ellipse at 50% 35%,#16283a,#070d16);border-radius:22%;}
 #hud-dibujo .hd-imagen,.retrato-tira,#unit-portrait-icon img,.btn-icon img,.inv-slot img{image-rendering:pixelated;}
@@ -1114,10 +1115,12 @@ const HUD_ZONAS={
 const ARTE_RETRATOS={
   // ── Dominio Kaelen (tus unidades) ──
   "Aeon Thraze":"", "Emisor de Pulso":"", "Unidad de Nanoreparación":"", "Disruptor de Escudos":"",
-  "Dron Constructor":     {sheet:"retrato_dron_constructor-sheet.png",count:4,fps:5},
-  "Centinela de Plasma":  {sheet:"retrato_centinela_plasma-sheet.png",count:4,fps:5},
-  "Coloso Blindado":      {sheet:"retrato_coloso_blindado-sheet.png",count:13,fps:9},
-  "Manipuladora Cuántica":{sheet:"retrato_manipuladora_cuantica-sheet.png",count:3,fps:4},
+  // recorte:[x,y,ancho,alto] = la pantallita de adentro de tu dibujo (sin el marco gris de la tele):
+  // esa parte calza en el hueco del HUD y el marco queda escondido detrás del panel.
+  "Dron Constructor":     {sheet:"retrato_dron_constructor-sheet.png",count:4,fps:5,frameW:100,frameH:100,recorte:[14,24,72,52]},
+  "Centinela de Plasma":  {sheet:"retrato_centinela_plasma-sheet.png",count:4,fps:5,frameW:100,frameH:100,recorte:[14,24,72,52]},
+  "Coloso Blindado":      {sheet:"retrato_coloso_blindado-sheet.png",count:13,fps:9,frameW:100,frameH:100,recorte:[14,24,72,52]},
+  "Manipuladora Cuántica":{sheet:"retrato_manipuladora_cuantica-sheet.png",count:3,fps:4,frameW:100,frameH:100,recorte:[14,24,72,52]},
   // ── Dominio Kaelen (tus estructuras) ──
   "Núcleo Central":"", "Forja de Autómatas":"", "Cámara de Reconstrucción":"", "Extractor de Energía":"",
   "Laboratorio de Armamento":"", "Torreta de Plasma":"", "Generador de Soporte Vital":"", "Portal Dimensional":"",
@@ -3353,6 +3356,10 @@ function retratoHTML(name,animado){
   // El cuadro conserva su proporción y se recorta para llenar la pantallita (como object-fit:cover).
   const img=getAnimImg(src),r=(e.frameW&&e.frameH)?e.frameW/e.frameH:(imgLista(img)?(img.naturalWidth/n)/img.naturalHeight:1);
   const anim=animado?`animation:retrato-tira ${(n/((e.fps||8)*VELOCIDAD_ANIMACION)).toFixed(3)}s steps(${n}) infinite;`:"";
+  if(e.recorte&&e.frameW&&e.frameH){ // solo la pantallita de adentro llena el hueco; el resto del dibujo queda afuera (detrás del HUD)
+    const [rx,ry,rw,rh]=e.recorte,f=v=>v.toFixed(4);
+    return `<div class="retrato-caja"><div class="retrato-tira" style="background-image:url('${rutaArte(src)}');background-size:${n*100}% 100%;--fin:${(100*n/(n-1)).toFixed(4)}%;width:calc(100cqw * ${f(e.frameW/rw)});height:calc(100cqh * ${f(e.frameH/rh)});left:calc(-100cqw * ${f(rx/rw)});top:calc(-100cqh * ${f(ry/rh)});transform:none;${anim}"></div></div>`;
+  }
   return `<div class="retrato-caja"><div class="retrato-tira" style="background-image:url('${rutaArte(src)}');background-size:${n*100}% 100%;--r:${r.toFixed(4)};--fin:${(100*n/(n-1)).toFixed(4)}%;${anim}"></div></div>`;
 }
 function setPortrait(unit){
@@ -4918,6 +4925,10 @@ armarMenusDibujados();
 // funciona también sobre botones desactivados, que no avisan cuando pasa el mouse).
 // Los botones de comando usan una marca propia ("no-disp") en vez del disabled del navegador:
 // se ven apagados y no hacen nada al clicarlos, pero el mouse sí los detecta.
+// Copia del texto de ayuda original de cada botón: varios botones cambian su contenido
+// durante la partida (nivel, costo, requisito) y al hacerlo se perdía su cuadro de información.
+const TIP_ORIGINAL={};
+document.querySelectorAll(".command-btn").forEach(b=>{const t=b.querySelector(".btn-tooltip");if(t&&b.id&&t.innerHTML.trim())TIP_ORIGINAL[b.id]=t.innerHTML;});
 document.querySelectorAll(".command-btn").forEach(b=>{
   const habia=b.hasAttribute("disabled")||b.disabled;b.removeAttribute("disabled");
   Object.defineProperty(b,"disabled",{configurable:true,get(){return this.classList.contains("no-disp");},set(v){this.classList.toggle("no-disp",!!v);this.setAttribute("aria-disabled",v?"true":"false");}});
@@ -5018,6 +5029,7 @@ function contenidoTip(el){
   if(t&&t.title){el.dataset.tip=t.title;}
   if(el.hasAttribute&&el.hasAttribute("title")&&t){el.dataset.tip=el.getAttribute("title");el.removeAttribute("title");}
   if(t&&t.innerHTML.trim())return t.innerHTML+lineaDescripcion(el)+lineaRequisitos(el);
+  if(!t&&el.id&&TIP_ORIGINAL[el.id])return TIP_ORIGINAL[el.id]+lineaDescripcion(el)+lineaRequisitos(el);
   if(el.hasAttribute("title")){el.dataset.tip=el.getAttribute("title");el.removeAttribute("title");} // así no sale además el globito del navegador
   return el.dataset.tip?formatearTip(el.dataset.tip)+lineaDescripcion(el)+lineaRequisitos(el):"";
 }
