@@ -54,7 +54,8 @@ body.cargando-menu .splash-content{opacity:0;}
 #intro.fuera{opacity:0;pointer-events:none;transition:opacity .6s ease-out;}
 #intro-negro{position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .9s ease-in-out;}
 #intro-negro.fuera{opacity:0;pointer-events:none;}
-#intro-estudio{display:flex;flex-direction:column;align-items:center;gap:18px;opacity:0;transition:opacity .9s ease-in-out;text-align:center;padding:0 16px;}
+#intro-cielo{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+#intro-estudio{position:relative;display:flex;flex-direction:column;align-items:center;gap:18px;opacity:0;transition:opacity .9s ease-in-out;text-align:center;padding:0 16px;}
 .intro-fila{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;}
 .intro-presenta{opacity:.85;}
 body.intro-entrando #vista-principal .splash-logo{opacity:0;}
@@ -560,7 +561,7 @@ body.sin-teclas .btn-hotkey{display:none!important;}
 <body class="cargando-menu en-intro">
 <div id="intro" aria-live="polite">
   <div id="intro-titulo"><div id="intro-logo"></div><div id="intro-presiona"></div></div>
-  <div id="intro-negro"><div id="intro-estudio"></div></div>
+  <div id="intro-negro"><canvas id="intro-cielo"></canvas><div id="intro-estudio"></div></div>
 </div>
 
 <!-- SPLASH SCREEN -->
@@ -1223,6 +1224,8 @@ const ARTE_MENU={
 ARTE_MENU.titulo="titulo_aethelgard.png";
 // ── INTRO AL ABRIR EL JUEGO (como la de Terraria): primero el estudio, después el título ──
 const INTRO={
+  pausa_negro:0.8,         // segundos en negro después del logo, antes de la primera estrella
+  segundos_estrellas:3.6,  // cuánto tardan en aparecer todas las estrellas (empiezan de a una y se aceleran)
   estudio:"The Ink Owl Entertainment",   // nombre del estudio (sale con tus letras grandes)
   presenta:"presenta",                  // la palabra chiquita de abajo (como "Re-Logic presents")
   buho:"",                 // PNG del búho negrito que va al lado del nombre (cuando lo tengas)
@@ -1292,6 +1295,7 @@ const ESTRELLAS_FONDO_ESTELAR="136,0,0.5,154,0,1,438,2,2.5,484,2,3,547,2,0.5,502
     // sombra suave en el centro, para que el título y los botones se lean bien sobre las estrellas
     const gr=fc.createRadialGradient(sw/2,sh*0.5,0,sw/2,sh*0.5,Math.max(sw,sh)*0.42);
     gr.addColorStop(0,"rgba(0,0,0,0.55)");gr.addColorStop(1,"rgba(0,0,0,0)");fc.fillStyle=gr;fc.fillRect(0,0,sw,sh);
+    window._fondoIntro={cache:fondoCache,escala,offX,offY,listo:imgLista(img)};   // para la intro: las estrellas aparecen de a una
   }
   function buscarEstrellas(){
     let lista=null;
@@ -1307,6 +1311,7 @@ const ESTRELLAS_FONDO_ESTELAR="136,0,0.5,154,0,1,438,2,2.5,484,2,3,547,2,0.5,502
       }
     }catch(e){lista=null;}
     if(!lista&&ARTE_MENU.fondo==="fondo_estelar.png"){const v=ESTRELLAS_FONDO_ESTELAR.split(",").map(Number);lista=[];for(let k=0;k<v.length;k+=3)lista.push([v[k],v[k+1],v[k+2]]);}
+    window._estrellasIntro=lista||[];
     estrellas=(lista||[]).filter(()=>Math.random()<ESTRELLAS_QUE_PARPADEAN).map(e=>({x:e[0],y:e[1],r:e[2],fase:Math.random()*6.28,vel:0.6+Math.random()*2.2,brilla:e[2]>=2&&Math.random()<0.12}));
   }
   // ── decoraciones que cruzan ──
@@ -1954,9 +1959,40 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     else logo.innerHTML=textoDibujado("AETHELGARD","g",3);
   };
   const aTitulo=()=>{
-    if(fase!=="estudio")return;fase="titulo";timers.forEach(clearTimeout);
+    if(fase!=="estudio"&&fase!=="cielo")return;fase="titulo";timers.forEach(clearTimeout);cieloActivo=false;
     est.classList.remove("ver");negro.classList.add("fuera");
     setTimeout(()=>tit.classList.add("ver"),500);
+  };
+  // ── después del logo: negro un momento, una estrellita… y después cada vez más y más rápido ──
+  let cieloActivo=false;
+  const aCielo=()=>{
+    if(fase!=="estudio")return;
+    const F=window._fondoIntro,L=window._estrellasIntro;
+    if(!F||!F.listo||!L||!L.length){aTitulo();return;}   // si el fondo no cargó, directo al título
+    fase="cielo";cieloActivo=true;
+    const cv=document.getElementById("intro-cielo"),g=cv.getContext("2d");
+    cv.width=F.cache.width;cv.height=F.cache.height;g.imageSmoothingEnabled=false;
+    // primero una estrella chiquita cerca del centro; las demás en orden al azar
+    const cx=cv.width/2,cy=cv.height/2,pos=L.map(e=>({x:F.offX+e[0]*F.escala,y:F.offY+e[1]*F.escala,r:e[2]*F.escala}))
+      .filter(e=>e.x>-4&&e.y>-4&&e.x<cv.width+4&&e.y<cv.height+4);
+    if(!pos.length){aTitulo();return;}
+    let ini=0,mejor=Infinity;pos.forEach((e,i)=>{const d=Math.hypot(e.x-cx,e.y-cy)+e.r*60;if(d<mejor){mejor=d;ini=i;}});
+    const orden=[pos[ini],...pos.filter((_,i)=>i!==ini).sort(()=>Math.random()-0.5)];
+    const T=INTRO.segundos_estrellas*1000,N=orden.length,t0=performance.now();
+    // cuándo aparece cada una: la primera sola, después se acelera (curva al cubo)
+    orden.forEach((e,k)=>{e.t=k===0?0:T*(0.12+0.88*Math.cbrt(k/(N-1||1)));});
+    const paso=now=>{
+      if(!cieloActivo)return;
+      const t=now-t0;g.clearRect(0,0,cv.width,cv.height);
+      for(const e of orden){
+        if(e.t>t)continue;
+        const a=Math.min(1,(t-e.t)/350),p=Math.ceil(e.r)+3;
+        g.globalAlpha=a;g.drawImage(F.cache,e.x-p,e.y-p,p*2,p*2,e.x-p,e.y-p,p*2,p*2);
+      }
+      g.globalAlpha=1;
+      if(t<T+400)requestAnimationFrame(paso);else aTitulo();   // todas encendidas: aparece el resto del espacio y el título
+    };
+    requestAnimationFrame(paso);
   };
   // el toque de piano suena justo cuando aparece el logo
   const piano=INTRO.sonido?new Audio(rutaMusica(INTRO.sonido)):null;
@@ -1968,7 +2004,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     const clic=document.getElementById("intro-clic");if(clic)clic.remove();
     luego(()=>{est.classList.add("ver");if(piano&&!piano._sonando){piano._sonando=true;piano.currentTime=0;tocar(piano).catch(()=>{});}},150);
     luego(()=>est.classList.remove("ver"),150+900+INTRO.segundos_estudio*1000);
-    luego(aTitulo,150+900+INTRO.segundos_estudio*1000+900);
+    luego(aCielo,150+900+INTRO.segundos_estudio*1000+900+INTRO.pausa_negro*1000);
   };
   // espera un momento a tus letras (para que el nombre no salga primero en letra común)
   const t0=performance.now();
@@ -1990,7 +2026,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   })();
   const tecla=e=>{
     if(fase==="espera"){if(piano){tocar(piano).then(()=>{piano.pause();piano.currentTime=0;}).catch(()=>{});}empezarEstudio();if(e&&e.type==="keydown"){e.preventDefault();e.stopPropagation();}return;}
-    if(fase==="estudio"){aTitulo();return;}            // apretar algo durante el logo lo salta
+    if(fase==="estudio"||fase==="cielo"){aTitulo();return;}   // apretar algo durante el logo o las estrellas lo salta
     if(fase==="titulo"&&tit.classList.contains("ver")){fase="menu";if(typeof playTone==="function")try{playTone(660,0.08,'sine',0.04);}catch(err){}
       window.removeEventListener("keydown",tecla,true);capa.removeEventListener("pointerdown",tecla);
       alMenu();}
