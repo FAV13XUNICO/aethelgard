@@ -181,6 +181,24 @@ body:not(.cargando-menu) #carga-inicial{opacity:0;}
 .aj-rend-op:hover{border-color:#8fb3d9;}
 .aj-rend-op.elegida{border-color:#ffd966;background:rgba(255,217,102,.18);}
 .ig-rend{font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;background:linear-gradient(180deg,#2e2214,#1e1608);border:2px solid var(--border-outer);color:var(--text-main);}
+/* ── menú de pausa por pantallas ── */
+.po-caja{background:linear-gradient(180deg,#1e1608,#12100a);border:2px solid var(--border-outer);border-top:2px solid var(--gold);padding:28px 36px;width:min(560px,92vw);font-family:'Cinzel',serif;box-shadow:0 0 40px rgba(0,0,0,.9);pointer-events:auto;}
+.po-pantalla{display:none;}
+.po-pantalla.activa{display:block;animation:po-entra .18s ease-out;}
+@keyframes po-entra{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.po-titulo{color:var(--gold-bright);font-size:14px;font-weight:700;letter-spacing:3px;text-align:center;margin-bottom:22px;}
+.po-lista{display:flex;flex-direction:column;gap:10px;align-items:center;}
+.po-fila{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.po-btn{width:230px;max-width:100%;background:linear-gradient(180deg,#2e2214,#1e1608);border:2px solid var(--border-outer);color:var(--text-main);font-family:'Cinzel',serif;font-size:12px;padding:10px 22px;cursor:pointer;letter-spacing:2px;pointer-events:auto;transition:border-color .12s,color .12s,box-shadow .12s;}
+.po-btn:hover,.po-btn:focus-visible{border-color:var(--gold);color:var(--gold-bright);box-shadow:0 0 10px rgba(200,168,75,.35);outline:none;}
+.po-fila .po-btn{width:auto;}
+.po-salir{background:linear-gradient(180deg,#300e0e,#200808);border-color:#5a1010;color:#e08080;}
+.po-salir:hover,.po-salir:focus-visible{border-color:#c84040;color:#ffb0b0;box-shadow:0 0 10px rgba(200,60,60,.35);}
+.po-volver{display:block;margin:24px auto 0;background:none;border:none;color:var(--text-dim);font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;cursor:pointer;padding:6px 10px;}
+.po-volver:hover{color:var(--gold-bright);}
+.po-etiqueta{color:var(--text-dim);font-size:11px;margin-bottom:10px;text-align:center;}
+.po-etiqueta span{font-size:9px;opacity:.8;}
+.po-texto{color:var(--text-main);font-size:12px;text-align:center;margin-bottom:20px;line-height:1.6;}
 .ig-rend.elegida{border-color:var(--gold);color:var(--gold-bright);box-shadow:0 0 8px rgba(200,168,75,.4);}
 .enc-cuerpo{display:flex;gap:14px;align-items:stretch;justify-content:center;width:min(1180px,calc(100vw - 32px));}
 .enc-caja-lista{width:min(760px,calc(100vw - 32px));max-height:min(58vh,560px);transition:width .2s;}
@@ -3066,7 +3084,7 @@ window.addEventListener("keydown",e=>{
   if(e.key==="Pause"){e.preventDefault();pausaManual=!pausaManual;triggerAlert(pausaManual?"⏸️ Pausa (Pausa para seguir)":"▶️ Seguimos","#c8a84b",300);return;}
   if(kk==="escape"){
     if(atajosAyuda.style.display==="flex"){alternarAyuda();return;}
-    if(document.getElementById("ingame-options").style.display==="flex"){toggleIngameOptions();return;}
+    if(document.getElementById("ingame-options").style.display==="flex"){opcionesAtras();return;}
     if(cancelarModos())return;
     if(selected===TIENDA){selected=null;updateBottomUI();}
     return;
@@ -8473,8 +8491,21 @@ function syncIngameDifficultyButtons(){
   document.querySelectorAll('.ig-diff').forEach(b=>b.classList.remove('active'));
   const b=document.getElementById('ig-diff-'+selectedDifficulty);if(b)b.classList.add('active');
 }
+// cambia de pantalla dentro del menú de pausa
+function pantallaOpciones(p){
+  document.querySelectorAll("#ingame-options .po-pantalla").forEach(d=>d.classList.toggle("activa",d.dataset.p===p));
+  if(p==="graficos")syncPantallaBtn();
+}
+function pantallaOpcionesActual(){const d=document.querySelector("#ingame-options .po-pantalla.activa");return d?d.dataset.p:"principal";}
+// Esc dentro del menú: vuelve un paso; desde la principal, cierra
+function opcionesAtras(){
+  const p=pantallaOpcionesActual(),atras={ajustes:"principal",salir:"principal",sonido:"ajustes",graficos:"ajustes",juego:"ajustes"}[p];
+  if(atras)pantallaOpciones(atras);else toggleIngameOptions();
+}
+function syncPantallaBtn(){const b=document.getElementById("ig-pantalla");if(!b)return;const on=!!document.fullscreenElement;b.textContent=on?"ACTIVADA":"DESACTIVADA";b.classList.toggle("elegida",on);}
 function toggleIngameOptions(){
   const el=document.getElementById("ingame-options");el.style.display=el.style.display==="flex"?"none":"flex";
+  pantallaOpciones("principal");   // siempre abre en Continuar / Ajustes / Salir
   syncIngameDifficultyButtons();
   document.querySelectorAll(".ig-rend").forEach(b=>b.classList.toggle("elegida",b.dataset.v===AJUSTES.rendimiento));
   document.getElementById("ig-vol-music").value=Math.round(musicVol*100);
@@ -8581,31 +8612,65 @@ window.addEventListener("click", () => {
 }, { once: true });
 </script>
 
-<!-- OPTIONS OVERLAY -->
+<!-- OPTIONS OVERLAY (pausa) -->
+<!-- Pantallas: principal (Continuar/Ajustes/Salir) → ajustes (Sonido/Gráficos/Juego) → cada apartado.
+     Esc o "Volver" regresan un paso; desde la principal, Esc sigue la partida. -->
 <div id="ingame-options" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;pointer-events:auto;">
-  <div style="background:linear-gradient(180deg,#1e1608,#12100a);border:2px solid var(--border-outer);border-top:2px solid var(--gold);padding:28px 36px;min-width:320px;font-family:'Cinzel',serif;box-shadow:0 0 40px rgba(0,0,0,.9);pointer-events:auto;">
-    <div style="color:var(--gold-bright);font-size:14px;font-weight:700;letter-spacing:3px;text-align:center;margin-bottom:20px;">⚙️ OPCIONES</div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><span style="color:var(--text-dim);font-size:10px;width:80px;">🎵 Música</span><input type="range" id="ig-vol-music" min="0" max="100" value="35" style="flex:1;accent-color:var(--gold);" oninput="setMusicVol(this.value);document.getElementById('ig-vol-music-val').textContent=this.value+'%'"><span id="ig-vol-music-val" style="color:var(--gold);font-size:10px;width:32px;">35%</span></div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;"><span style="color:var(--text-dim);font-size:10px;width:80px;">🔊 Sonidos</span><input type="range" id="ig-vol-sfx" min="0" max="100" value="60" style="flex:1;accent-color:var(--gold);" oninput="setSfxVol(this.value);document.getElementById('ig-vol-sfx-val').textContent=this.value+'%'"><span id="ig-vol-sfx-val" style="color:var(--gold);font-size:10px;width:32px;">60%</span></div>
-    <div style="margin-bottom:20px;">
-      <div style="color:var(--text-dim);font-size:10px;margin-bottom:8px;">⚔️ Dificultad (afecta a las unidades enemigas que se creen a partir de ahora)</div>
-      <div style="display:flex;gap:8px;justify-content:center;">
-        <button type="button" class="ig-diff" id="ig-diff-easy" onclick="setDifficultyIngame('easy')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">🌿 Fácil</button>
-        <button type="button" class="ig-diff" id="ig-diff-normal" onclick="setDifficultyIngame('normal')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">⚔️ Normal</button>
-        <button type="button" class="ig-diff" id="ig-diff-hard" onclick="setDifficultyIngame('hard')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">💀 Difícil</button>
+  <div class="po-caja">
+    <div class="po-pantalla activa" data-p="principal">
+      <div class="po-titulo">⏸️ PAUSA</div>
+      <div class="po-lista">
+        <button type="button" class="po-btn" onclick="toggleIngameOptions()">▶ Continuar</button>
+        <button type="button" class="po-btn" onclick="pantallaOpciones('ajustes')">⚙️ Ajustes</button>
+        <button type="button" class="po-btn po-salir" onclick="pantallaOpciones('salir')">🚪 Salir</button>
       </div>
     </div>
-    <div style="margin-bottom:20px;">
-      <div style="color:var(--text-dim);font-size:10px;margin-bottom:8px;">⚡ Rendimiento (Bajo: menos resolución y 30 cuadros por segundo, para equipos lentos)</div>
+    <div class="po-pantalla" data-p="ajustes">
+      <div class="po-titulo">⚙️ AJUSTES</div>
+      <div class="po-lista">
+        <button type="button" class="po-btn" onclick="pantallaOpciones('sonido')">🔊 Sonido</button>
+        <button type="button" class="po-btn" onclick="pantallaOpciones('graficos')">🖥️ Gráficos</button>
+        <button type="button" class="po-btn" onclick="pantallaOpciones('juego')">⚔️ Juego</button>
+      </div>
+      <button type="button" class="po-volver" onclick="pantallaOpciones('principal')">◀ Volver</button>
+    </div>
+    <div class="po-pantalla" data-p="sonido">
+      <div class="po-titulo">🔊 SONIDO</div>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><span style="color:var(--text-dim);font-size:10px;width:80px;">🎵 Música</span><input type="range" id="ig-vol-music" min="0" max="100" value="35" style="flex:1;accent-color:var(--gold);" oninput="setMusicVol(this.value);document.getElementById('ig-vol-music-val').textContent=this.value+'%'"><span id="ig-vol-music-val" style="color:var(--gold);font-size:10px;width:32px;">35%</span></div>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;"><span style="color:var(--text-dim);font-size:10px;width:80px;">🔊 Sonidos</span><input type="range" id="ig-vol-sfx" min="0" max="100" value="60" style="flex:1;accent-color:var(--gold);" oninput="setSfxVol(this.value);document.getElementById('ig-vol-sfx-val').textContent=this.value+'%'"><span id="ig-vol-sfx-val" style="color:var(--gold);font-size:10px;width:32px;">60%</span></div>
+      <button type="button" class="po-volver" onclick="pantallaOpciones('ajustes')">◀ Volver</button>
+    </div>
+    <div class="po-pantalla" data-p="graficos">
+      <div class="po-titulo">🖥️ GRÁFICOS</div>
+      <div class="po-etiqueta">⚡ Rendimiento <span>(Bajo: menos resolución y 30 cuadros por segundo, para equipos lentos)</span></div>
       <div style="display:flex;gap:8px;justify-content:center;">
         <button type="button" class="ig-rend" data-v="auto" onclick="elegirRendimiento('auto')">AUTO</button>
         <button type="button" class="ig-rend" data-v="alto" onclick="elegirRendimiento('alto')">ALTO</button>
         <button type="button" class="ig-rend" data-v="bajo" onclick="elegirRendimiento('bajo')">BAJO</button>
       </div>
+      <div class="po-etiqueta" style="margin-top:18px;">🔲 Pantalla completa</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button type="button" class="ig-rend" id="ig-pantalla" onclick="alternarPantallaCompleta();setTimeout(syncPantallaBtn,250);">ACTIVAR</button>
+      </div>
+      <button type="button" class="po-volver" onclick="pantallaOpciones('ajustes')">◀ Volver</button>
     </div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button type="button" onclick="toggleIngameOptions()" style="background:linear-gradient(180deg,#2e2214,#1e1608);border:2px solid var(--border-outer);color:var(--text-main);font-family:'Cinzel',serif;font-size:11px;padding:8px 22px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">▶ Continuar</button>
-      <button type="button" onclick="goToMainMenu()" style="background:linear-gradient(180deg,#300e0e,#200808);border:2px solid #5a1010;color:#e08080;font-family:'Cinzel',serif;font-size:11px;padding:8px 22px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">🏠 Menú Principal</button>
+    <div class="po-pantalla" data-p="juego">
+      <div class="po-titulo">⚔️ JUEGO</div>
+      <div class="po-etiqueta">Dificultad <span>(afecta a las unidades enemigas que se creen a partir de ahora)</span></div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button type="button" class="ig-diff" id="ig-diff-easy" onclick="setDifficultyIngame('easy')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">🌿 Fácil</button>
+        <button type="button" class="ig-diff" id="ig-diff-normal" onclick="setDifficultyIngame('normal')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">⚔️ Normal</button>
+        <button type="button" class="ig-diff" id="ig-diff-hard" onclick="setDifficultyIngame('hard')" style="font-family:'Cinzel',serif;font-size:10px;padding:6px 12px;cursor:pointer;letter-spacing:1px;pointer-events:auto;">💀 Difícil</button>
+      </div>
+      <button type="button" class="po-volver" onclick="pantallaOpciones('ajustes')">◀ Volver</button>
+    </div>
+    <div class="po-pantalla" data-p="salir">
+      <div class="po-titulo">🚪 SALIR</div>
+      <div class="po-texto">¿Volver al menú principal? Se perderá la partida actual.</div>
+      <div class="po-fila">
+        <button type="button" class="po-btn po-salir" onclick="goToMainMenu()">Sí, salir</button>
+        <button type="button" class="po-btn" onclick="pantallaOpciones('principal')">No, seguir</button>
+      </div>
     </div>
   </div>
 </div>
