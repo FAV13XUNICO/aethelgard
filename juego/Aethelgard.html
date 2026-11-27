@@ -1155,6 +1155,7 @@ const SONIDOS={
   compra:   {archivo:"compra.mp3",   vol:0.70}, // compras un objeto en la tienda
 };
 const MUSICA_MENU_REPETIR=false;   // true = el tema del menú vuelve a empezar al terminar
+const MUSICA_MENU_TROMPETA=0.44;   // segundo del tema del menú donde entra la primera trompeta: cae justo cuando aparece el logo
 const MUSICA_SILENCIO_MIN=40, MUSICA_SILENCIO_MAX=110; // segundos de silencio entre una canción y la siguiente
 
 // ── TEXTOS DEL MENÚ PRINCIPAL ── (cámbialos por los tuyos)
@@ -1455,11 +1456,11 @@ function fundirYParar(el,ms=700){
   if(!el)return;el.onended=null;const v0=el.volume,t0=performance.now();
   const paso=()=>{const f=Math.min(1,(performance.now()-t0)/ms);el.volume=v0*(1-f);if(f<1)requestAnimationFrame(paso);else el.pause();};paso();
 }
-function tocarCancion(src,{bucle=false}={}){
+function tocarCancion(src,{bucle=false,precargado=null}={}){
   if(!src)return false;
   clearTimeout(musicaTimer);musicaTimer=null;
-  if(musicaEl)fundirYParar(musicaEl);
-  const el=new Audio(rutaMusica(src));el.volume=volMusica();el.loop=bucle;musicaEl=el;musicaUltima=src;
+  if(musicaEl&&musicaEl!==precargado)fundirYParar(musicaEl);
+  const el=precargado||new Audio(rutaMusica(src));el.volume=volMusica();el.loop=bucle;musicaEl=el;musicaUltima=src;
   el.onended=()=>{if(musicaEl===el)programarSiguienteCancion();};
   el.onerror=()=>{console.warn("[Aethelgard] No se pudo cargar la música:",src,"(¿está en la carpeta \"musica\" y con ese nombre?)");if(musicaEl===el)programarSiguienteCancion();};
   el.play().catch(()=>{ // el navegador la bloqueó (todavía no hubo un clic): suena con el próximo clic
@@ -1486,7 +1487,7 @@ function musicaInicioPartida(){
 function stopGameMusic(){musicaActiva=false;clearTimeout(musicaTimer);musicaTimer=null;if(musicaEl){fundirYParar(musicaEl);musicaEl=null;}}
 function musicaFinal(victoria){stopGameMusic();const src=victoria?MUSICA.victoria:MUSICA.derrota;if(src)tocarCancion(src);}
 // Música del menú: con el primer clic en la pantalla de inicio (en bucle hasta empezar la partida)
-document.addEventListener("pointerdown",()=>{if(MUSICA.menu&&!musicaActiva&&!musicaEl&&document.getElementById("splash").style.display!=="none")tocarCancion(MUSICA.menu,{bucle:MUSICA_MENU_REPETIR});},{once:true});
+document.addEventListener("pointerdown",()=>{if(MUSICA.menu&&!musicaActiva&&!musicaEl&&!document.getElementById("intro")&&document.getElementById("splash").style.display!=="none")tocarCancion(MUSICA.menu,{bucle:MUSICA_MENU_REPETIR});},{once:true});
 // compatibilidad con el código viejo
 function startCustomMusic(){}
 
@@ -2009,8 +2010,12 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     else logo.innerHTML=textoDibujado("AETHELGARD","g",3);
   };
   // el tema del título suena desde que sale el logo, y las cosas del fondo empiezan a cruzar
+  // el tema se carga desde el principio de la intro, así arranca al instante (sin esperar la descarga)
   let temaSonando=false;
-  const salioElLogo=()=>{if(!temaSonando){temaSonando=true;if(MUSICA.menu)tocarCancion(MUSICA.menu,{bucle:MUSICA_MENU_REPETIR});}window._decoMenu=true;};
+  const temaEl=MUSICA.menu?new Audio(rutaMusica(MUSICA.menu)):null;
+  if(temaEl){temaEl.preload="auto";try{temaEl.load();}catch(e){}}
+  const sonarTema=()=>{if(!temaSonando){temaSonando=true;if(MUSICA.menu)tocarCancion(MUSICA.menu,{bucle:MUSICA_MENU_REPETIR,precargado:temaEl});}};
+  const salioElLogo=()=>{sonarTema();window._decoMenu=true;};
   const aTitulo=(logoListo)=>{
     if(fase!=="estudio"&&fase!=="cielo")return;fase="titulo";timers.forEach(clearTimeout);cieloActivo=false;
     est.classList.remove("ver");negro.classList.add("fuera");salioElLogo();
@@ -2073,7 +2078,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
       if(!cieloActivo)return;
       const t=now-t0;g.clearRect(0,0,cv.width,cv.height);
       // mientras se arma el logo el resto del cielo se apaga un poco (y vuelve cuando aparece)
-      const tl0=tLogo>=0?t-tLogo:-1,atenuar=tl0<0?1:tl0<D?1-0.5*Math.min(1,tl0/600):0.5+0.5*Math.min(1,(tl0-D-QUIETO)/FLASH);
+      const tl0=tLogo>=0?t-tLogo:-1,atenuar=tl0<0?1:tl0<D+QUIETO?1-0.5*Math.min(1,tl0/600):0.5+0.5*Math.min(1,(tl0-D-QUIETO)/FLASH);
       for(const e of orden){
         if(e.t>t)continue;
         const a=Math.min(1,(t-e.t)/350),p=Math.ceil(e.r)+3;
@@ -2084,7 +2089,10 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
       if(tLogo>=0){
         const tl=t-tLogo;
         // las estrellitas viajan en curva hasta su lugar en el logo
-        const desv=tl>D+QUIETO?Math.max(0,1-(tl-D-QUIETO)/FLASH):1;
+        const R=D+QUIETO;   // el momento en que aparece el logo
+        // la música arranca un poquito antes, para que su primera trompeta caiga justo en R
+        if(tl>=R-MUSICA_MENU_TROMPETA*1000)sonarTema();
+        const desv=tl>R?Math.max(0,1-(tl-R)/(FLASH*0.7)):1;
         for(const q of parts){
           const f=Math.max(0,Math.min(1,(tl-q.ret)/q.dur));if(f<=0)continue;
           const e=suave(f),dx=q.x1-q.x0,dy=q.y1-q.y0;
@@ -2093,12 +2101,12 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
           g.globalAlpha=brillo*0.22;g.fillStyle="#7fb2ff";g.fillRect(x-s*1.5,y-s*1.5,s*3,s*3);   // halo
           g.globalAlpha=brillo;g.fillStyle="#e6f2ff";g.fillRect(x-s/2,y-s/2,s,s);
         }
-        // ya armado: destello y aparece el logo de verdad
-        if(tl>D+QUIETO*0.4){
-          const a=Math.min(1,(tl-D-QUIETO*0.4)/(FLASH*0.9));
-          if(a>0.25)salioElLogo();
+        // ya armado: destello y aparece el logo de verdad (de golpe, con la trompeta)
+        if(tl>=R){
+          const a=Math.min(1,(tl-R)/160);
+          salioElLogo();
           g.globalAlpha=a;g.imageSmoothingEnabled=false;g.drawImage(logoImg,logoR.x,logoR.y,logoR.w,logoR.h);
-          const fl=Math.max(0,Math.sin(Math.min(1,(tl-D-QUIETO*0.4)/FLASH)*Math.PI))*0.55;
+          const fl=Math.max(0,1-(tl-R)/FLASH)*Math.min(1,(tl-R)/60)*0.6;   // destello fuerte que se apaga
           if(fl>0){g.globalAlpha=fl;g.globalCompositeOperation="lighter";g.drawImage(logoImg,logoR.x,logoR.y,logoR.w,logoR.h);g.globalCompositeOperation="source-over";}
         }
         g.globalAlpha=1;
