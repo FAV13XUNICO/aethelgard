@@ -933,7 +933,7 @@ const ARTE_UNIDADES={
   oso:       {idle:  {sheet:"slime_blindado-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:90,offY:9,offX:-1},
               walk:  {sheet:"slime_blindado-sheet.png",fila:1,count:4,frameW:100,frameH:100,fps:8,drawW:90,offY:10,offX:-5},
               attack:{sheet:"slime_blindado-sheet.png",fila:2,count:6,frameW:100,frameH:100,fps:12,disparoEn:3,drawW:90,offY:10,offX:-2}},   // Slime Blindado (filas: quieto · caminando · atacando)
-  ogro_jefe: {sheet:"titan_de_la_jungla-sheet.png",count:4,frameW:120,frameH:120,fps:5,drawW:150,offY:30,offX:-1},   // Titán de la Jungla (mini-jefe; cuadros de 120×120)
+  ogro_jefe: {sheet:"titan_de_la_jungla-sheet.png",count:4,frameW:120,frameH:120,fps:5,drawW:150,offY:30,offX:-1},   // Titán Obeso (jefe neutral; cuadros de 120×120)
 };
 
 // Edificios: se apoyan sobre su huella. drawW por defecto = ancho de la huella.
@@ -1132,7 +1132,7 @@ const ARTE_RETRATOS={
   // ── Coalición Terrestre (estructuras de la IA) ──
   "Cuartel General":"", "Academia Militar":"", "Fábrica de Armamento":"", "Torreta de Defensa":"", "Depósito de Suministros":"",
   // ── Neutrales ──
-  "Reptante Infectado":"", "Gatoide Infectado":"", "Slime Blindado":"", "Titán de la Jungla":"",
+  "Reptante Infectado":"", "Gatoide Infectado":"", "Slime Blindado":"", "Titán Obeso":"",
   "Puesto del Mercader Errante":"",
 };
 // ── MÚSICA ── (archivos .mp3/.ogg/.wav en la misma carpeta que este HTML)
@@ -1228,7 +1228,7 @@ const ENCICLOPEDIA_TEXTOS={
   "Reptante Infectado":"Criatura nativa contaminada por la infección: ataca a todo lo que entra en su territorio.",
   "Gatoide Infectado":"Un felino del planeta deformado por la infección: rapidísimo, caza en manada y salta sobre su presa.",
   "Slime Blindado":"Un slime metido dentro de una armadura vieja: lento, pero con un caparazón muy duro.",
-  "Titán de la Jungla":"El mini-jefe del centro del mapa. Suelta muy buen botín.",
+  "Titán Obeso":"Jefe neutral del centro del mapa: enorme, lento y muy resistente. Si lo derrotas suelta la Corona del Titán.",
   "Puesto del Mercader Errante":"La tienda neutral del centro: aquí el héroe compra y vende objetos.",
 };
 
@@ -1736,7 +1736,7 @@ function datosEnciclopedia(){
     "🎒 Objetos":Object.entries(OBJETOS).map(([id,o])=>[o.nombre,ARTE_OBJETOS[id],o.icono,`${o.precio} 🪙 · ${o.tipo==="consumible"?"se usa una vez":"pasivo"}`,o.desc]),
     "🐾 Neutrales":[
       ...Object.values(NEUTRAL_TYPES).map(n=>[n.name,U[n.sprite],n.icon,`❤️ ${n.hp} · ⚔️ ${n.damage} · suelta ${n.goldReward} 🪙`]),
-      ...Object.values(MINIBOSS_TYPES).map(n=>[n.name,U[n.sprite],n.icon,`❤️ ${n.hp} · ⚔️ ${n.damage} · mini-jefe · suelta ${n.goldReward} 🪙`]),
+      ...Object.values(MINIBOSS_TYPES).map(n=>[n.name,U[n.sprite],n.icon,`❤️ ${n.hp} · ⚔️ ${n.damage} · jefe neutral · suelta ${n.goldReward} 🪙`]),
       ["Puesto del Mercader Errante",ARTE_ESTRUCTURAS_NEUTRALES.tienda,"🏪","tienda de objetos"],
     ],
   };
@@ -1775,7 +1775,7 @@ function rolEnc(nombre,cat){
   const d=ENC_DETALLE[nombre];if(d&&d.rol)return d.rol;
   const b=ENC_EDIF_BOTON[nombre];if(b&&typeof DESCRIPCION_BOTONES!=="undefined"&&DESCRIPCION_BOTONES[b])return DESCRIPCION_BOTONES[b][0];
   if(/Objetos/.test(cat))return "Objeto";
-  if(/Neutrales/.test(cat))return /mini-jefe/.test(ENC_STATS_ACTUAL)?"Mini-jefe neutral":"Criatura neutral";
+  if(/Neutrales/.test(cat))return /jefe neutral/.test(ENC_STATS_ACTUAL)?"Jefe neutral":"Criatura neutral";
   return "";
 }
 let ENC_STATS_ACTUAL="";
@@ -2577,6 +2577,22 @@ function getWorldPos(e){
   const p=posEnMapa(e);
   return isoToWorld(p.x,p.y);
 }
+// ── ¿Qué unidad hay bajo el mouse? ──
+// Vale hacer clic sobre TODO el dibujo de la unidad (la caja que guarda drawUnit),
+// no solo sobre sus pies. Si hay varias, gana la que está más adelante.
+// listas: arrays de unidades · filtro(u): opcional, para descartar algunas
+function unidadEnPunto(e,listas,filtro){
+  const p=e.clientX!==undefined?posEnMapa(e):e,w=isoToWorld(p.x,p.y);
+  let mejor=null,prof=-Infinity;
+  for(const l of listas)for(const u of l){
+    if(!u||u.hidden||u.hp<=0||(filtro&&!filtro(u)))continue;
+    const c=u._caja,M=4;
+    const enCaja=c&&frameDibujo-c.t<=3&&p.x>=c.x0-M&&p.x<=c.x1+M&&p.y>=c.y0-M&&p.y<=c.y1+M;
+    if(!enCaja&&Math.hypot(w.x-u.x,w.y-u.y)>Math.max((u.radius||10)+6,20))continue;
+    const d=u.x+u.y;if(d>prof){prof=d;mejor=u;}
+  }
+  return mejor;
+}
 // A diferencia de getWorldPos, esto NO pasa por isoToWorld — devuelve la
 // posición cruda en píxeles de pantalla/canvas. Lo necesita el cuadro de
 // selección por arrastre: ese cuadro tiene que vivir en pantalla (como en
@@ -2815,10 +2831,10 @@ canvas.addEventListener("mouseleave",()=>{mouseSobreMapa=false;});
 function cosaBajoElMouse(){
   if(!mouseSobreMapa)return null;
   const w=getWorldPos({clientX:mouseCX,clientY:mouseCY});
-  const cerca=(u)=>!u.hidden&&Math.hypot(w.x-u.x,w.y-u.y)<=Math.max((u.radius||10)+5,20);
-  for(const l of [enemies,neutralUnits])for(const u of l)if(cerca(u))return {enemigo:true};
+  const ev={clientX:mouseCX,clientY:mouseCY};
+  if(unidadEnPunto(ev,[enemies,neutralUnits]))return {enemigo:true};
   for(const s of structures)if(w.x>s.x&&w.x<s.x+s.size&&w.y>s.y&&w.y<s.y+s.size)return {enemigo:s.team==="enemy"};
-  for(const l of [soldiers,workers])for(const u of l)if(cerca(u))return {enemigo:false};
+  if(unidadEnPunto(ev,[soldiers,workers]))return {enemigo:false};
   for(const m of mines)if(w.x>m.left&&w.x<m.left+m.fp&&w.y>m.top&&w.y<m.top+m.fp)return {enemigo:false};
   if(clicEnTienda(w.x,w.y))return {enemigo:false};
   for(const ob of objetosSuelo)if(Math.hypot(w.x-ob.x,w.y-ob.y)<25)return {enemigo:false};
@@ -3312,7 +3328,38 @@ function getAnimFrame(u){
   revisarTira(clip,img);
   const total=clip.count||1,lista=clip.cuadros,i=lista&&lista.length?lista[(u._animFrame||0)%lista.length]%total:(u._animFrame||0)%total;
   const fw=clip.frameW||img.naturalWidth/total,fh=clip.frameH||img.naturalHeight;
-  return {img,sx:i*fw,sy:(clip.fila||0)*fh,sw:fw,sh:fh,flip:debeVoltear(u,clip,anim),drawW:clip.drawW,offY:clip.offY||0,offX:clip.offX||0};
+  return {img,clip,sx:i*fw,sy:(clip.fila||0)*fh,sw:fw,sh:fh,flip:debeVoltear(u,clip,anim),drawW:clip.drawW,offY:clip.offY||0,offX:clip.offX||0};
+}
+// ── LÍMITES DEL DIBUJO DE CADA ANIMACIÓN ──
+// Se miran una sola vez los píxeles de la tira para saber dónde están los pies
+// (la fila más baja con color) y qué parte del cuadro ocupa el cuerpo. Con eso:
+//  · los pies se apoyan solos sobre la sombra (no hace falta acomodar offY a mano)
+//  · el clic para elegir una unidad funciona sobre todo su cuerpo, no solo en los pies
+// Si el navegador no deja leer los píxeles, se usa offY como antes.
+const _cvLim=document.createElement("canvas");
+function limitesClip(clip,img){
+  if(clip._lim!==undefined)return clip._lim;
+  if(!imgLista(img))return null;
+  clip._lim=null;
+  try{
+    const n=clip.count||1,fw=clip.frameW||img.naturalWidth/n,fh=clip.frameH||img.naturalHeight,fy=(clip.fila||0)*fh;
+    const W=Math.round(fw*n),H=Math.round(fh);
+    _cvLim.width=W;_cvLim.height=H;
+    const c=_cvLim.getContext("2d",{willReadFrequently:true});
+    c.clearRect(0,0,W,H);c.drawImage(img,0,fy,W,H,0,0,W,H);
+    const d=c.getImageData(0,0,W,H).data;
+    const abajo=new Array(n).fill(-1);let arriba=H,izq=fw,der=-1;
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      if(d[(y*W+x)*4+3]<=40)continue;
+      const k=Math.min(n-1,Math.floor(x/fw)),lx=x-k*fw;
+      if(y>abajo[k])abajo[k]=y;if(y<arriba)arriba=y;if(lx<izq)izq=lx;if(lx>der)der=lx;
+    }
+    const pies=abajo.filter(v=>v>=0).sort((a,b)=>a-b);
+    if(!pies.length)return null;
+    // la mediana: un cuadro con un efecto que cuelga más abajo no levanta a todos
+    clip._lim={pies:pies[(pies.length-1)>>1]+1,arriba,izq,der:der+1,fw,fh};
+  }catch(e){clip._lim=null;}
+  return clip._lim;
 }
 // Frame de una casilla de edificio: "archivo.png" o una tira (se anima con el reloj).
 function sceneryFrame(entry){
@@ -3922,7 +3969,7 @@ const aiWorkers=[];
 // ═══════════════ CAMPAMENTOS NEUTRALES ═══════════════
 // Criaturas quietas que no molestan a nadie hasta que te acercás. Dan oro y
 // experiencia al morir. "count" = cuántas criaturas normales tiene ese
-// campamento; "boss" (opcional) hace que además aparezca un mini-jefe en el
+// campamento; "boss" (opcional) hace que además aparezca un jefe neutral en el
 // centro del campamento, con mucha más vida y mejor botín al morir.
 const NEUTRAL_TYPES={
   jabali:{name:"Reptante Infectado",  hp:80, damage:9, speed:1.6,radius:12,aggro:170,leash:260,cooldown:55,goldReward:15,icon:"🐗",sprite:"jabali",shape:"hex"},
@@ -3930,7 +3977,7 @@ const NEUTRAL_TYPES={
   oso:   {name:"Slime Blindado",  hp:170,damage:17,speed:1.3,radius:15,aggro:150,leash:220,cooldown:65,goldReward:28,icon:"🐻",sprite:"oso",   shape:"hex"},
 };
 const MINIBOSS_TYPES={
-  ogro_jefe:{name:"Titán de la Jungla",hp:900,damage:34,speed:1.1,radius:20,aggro:230,leash:200,cooldown:70,goldReward:150,bonusLumber:80,icon:"👹",sprite:"ogro_jefe",shape:"star",isBoss:true},
+  ogro_jefe:{name:"Titán Obeso",hp:900,damage:34,speed:1.1,radius:20,aggro:230,leash:200,cooldown:70,goldReward:150,bonusLumber:80,icon:"👹",sprite:"ogro_jefe",shape:"star",isBoss:true},
 };
 const neutralCampDefs=[
   {x:1000,y:650, count:4,type:"jabali"},                    // zona de arriba
@@ -4692,7 +4739,7 @@ const OBJETOS={
   botas_antigrav:  {nombre:"Botas Antigravedad",    icono:"🥾", tipo:"pasivo",precio:120, desc:"+0,6 de velocidad de movimiento.",bonus:{speed:0.6}},
   nucleo_regen:    {nombre:"Núcleo de Regeneración",icono:"💚", tipo:"pasivo",precio:130, desc:"Regenera 3 de vida por segundo.",bonus:{regen:3}},
   amuleto_cuantico:{nombre:"Amuleto Cuántico",      icono:"🔮", tipo:"pasivo",precio:140, desc:"+100 de maná máximo y +1 de maná por segundo.",bonus:{maxMana:100,manaRegen:1}},
-  corona_titan:    {nombre:"Corona del Titán",      icono:"👑", tipo:"pasivo",precio:0, soloBotin:true, desc:"Botín del Titán de la Jungla: +20 de daño y +300 de vida máxima.",bonus:{damage:20,maxHp:300}},
+  corona_titan:    {nombre:"Corona del Titán",      icono:"👑", tipo:"pasivo",precio:0, soloBotin:true, desc:"Botín del Titán Obeso: +20 de daño y +300 de vida máxima.",bonus:{damage:20,maxHp:300}},
 };
 // Botín de las criaturas neutrales: probabilidad de soltar algo al morir.
 // "fijo" = objeto que suelta siempre (además del sorteo).
@@ -4777,13 +4824,12 @@ function aplicarObjeto(id,obj){
   return true;
 }
 // Clic en el mapa con un objeto elegido. Devuelve true si el clic se usó.
-function elegirObjetivoObjeto(w){
+function elegirObjetivoObjeto(w,ev){
   const pend=objetoPendiente;if(!pend)return false;
   const o=OBJETOS[pend.id];
   let obj;
   if(o.objetivo==="aliado"){
-    let mejor=null,md=Infinity;
-    for(const l of [soldiers,workers])for(const u of l){if(u.hidden||u.hp<=0)continue;const d=Math.hypot(w.x-u.x,w.y-u.y);if(d<=Math.max((u.radius||10)+10,24)&&d<md){md=d;mejor=u;}}
+    const mejor=unidadEnPunto(ev||worldToIso(w.x,w.y),[soldiers,workers]);
     if(!mejor){triggerAlert("Elige una unidad aliada","#ff9966",150);return true;}
     if(o.necesitaMana&&!mejor.maxMana){triggerAlert(`${mejor.name} no usa maná`,"#ff9966",150);return true;}
     obj=mejor;
@@ -5236,7 +5282,7 @@ function snapBuildPos(centerX,centerY,size){
 }
 
 // ═══════════════ UI FUNCTIONS ═══════════════
-const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Cuartel General":"💀","Academia Militar":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Infectado":"🐗","Gatoide Infectado":"🐺","Slime Blindado":"🐻","Titán de la Jungla":"👹","Puesto del Mercader Errante":"🛒"};
+const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Cuartel General":"💀","Academia Militar":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Infectado":"🐗","Gatoide Infectado":"🐺","Slime Blindado":"🐻","Titán Obeso":"👹","Puesto del Mercader Errante":"🛒"};
 
 function renderQueue(str){queueBox.innerHTML="";if(!str.queue||str.queue.length===0)return;str.queue.forEach((item,i)=>{let sl=document.createElement("div");sl.className="queue-slot";sl.textContent=item.name;sl.onclick=ev=>{ev.stopPropagation();cancelQueueItem(str,i);};queueBox.appendChild(sl);});}
 function cancelQueueItem(str,i){let c=str.queue.splice(i,1)[0];gold+=c.goldCost||0;lumber+=c.lumberCost||0;if(i===0)str.trainingProgress=0;updateBottomUI();}
@@ -5338,7 +5384,7 @@ function updateBottomUIPanel(){
     uiHpFill.style.background=cur.isBoss?"linear-gradient(180deg,#ff8800,#992200)":"linear-gradient(180deg,#cc9944,#8a5a1a)";
     uiHpText.textContent=`${Math.floor(cur.hp)} / ${cur.maxHp}`;
     skillDesc.textContent=cur.isBoss
-      ? `👑 Mini-jefe · ⚔️ Daño: ${cur.damage} · 💰 da ${cur.goldReward} cristal + ${cur.bonusLumber||0} de metal + experiencia al morir`
+      ? `👑 Jefe neutral · ⚔️ Daño: ${cur.damage} · 💰 da ${cur.goldReward} cristal + ${cur.bonusLumber||0} de metal + experiencia al morir`
       : `⚔️ Daño: ${cur.damage} · 💰 da ${cur.goldReward} cristal + experiencia al morir`;
     return;
   }
@@ -5609,9 +5655,9 @@ canvas.addEventListener("mousedown",e=>{if(e.button!==0)return;const sp=getScree
 canvas.addEventListener("dblclick",e=>{
   const world=getWorldPos(e);
   let target=null,pool=null;
-  for(let s of soldiers)if(Math.hypot(world.x-s.x,world.y-s.y)<=Math.max(s.radius+5,20)){target=s;pool=soldiers;break;}
-  if(!target)for(let w2 of workers)if(!w2.hidden&&Math.hypot(world.x-w2.x,world.y-w2.y)<=20){target=w2;pool=workers;break;}
+  target=unidadEnPunto(e,[soldiers,workers]);
   if(!target)return;
+  pool=soldiers.includes(target)?soldiers:workers;
   const vb=getVisibleWorldBounds();
   const matches=pool.filter(u=>u.name===target.name&&u.x>=vb.minX&&u.x<=vb.maxX&&u.y>=vb.minY&&u.y<=vb.maxY).slice(0,40);
   selectedUnits=matches;selected=matches.length===1?matches[0]:null;
@@ -5624,7 +5670,7 @@ canvas.addEventListener("mouseup",e=>{
   if(e.button!==0||!isDragging)return;isDragging=false;
   const world=getWorldPos(e);
   if(Math.hypot(dragEndX-dragStartX,dragEndY-dragStartY)<6){
-    if(objetoPendiente&&elegirObjetivoObjeto(world))return;
+    if(objetoPendiente&&elegirObjetivoObjeto(world,e))return;
     if(reparacionPendiente){
       const st=structures.find(t=>world.x>t.x&&world.x<t.x+t.size&&world.y>t.y&&world.y<t.y+t.size);
       if(!puedeRepararse(st)){triggerAlert(st&&st.team==="player"?(st.isUnderConstruction?"Eso está en obra: clic derecho para construirlo":"Ese edificio no está dañado"):"Elige un edificio tuyo dañado","#ff9966",160);return;}
@@ -5646,8 +5692,7 @@ canvas.addEventListener("mouseup",e=>{
     if(attackPending){
       const atkUnits=selectedUnits.filter(u=>u.type==="soldier");
       let clickedEnemy=null;
-      for(let en of enemies)if(Math.hypot(world.x-en.x,world.y-en.y)<=en.radius+6){clickedEnemy=en;break;}
-      if(!clickedEnemy)for(let n of neutralUnits)if(Math.hypot(world.x-n.x,world.y-n.y)<=n.radius+6){clickedEnemy=n;break;}
+      clickedEnemy=unidadEnPunto(e,[enemies,neutralUnits]);
       if(!clickedEnemy)for(let str of structures)if(str.team==="enemy"&&world.x>str.x-4&&world.x<str.x+str.size+4&&world.y>str.y-4&&world.y<str.y+str.size+4){clickedEnemy=str;break;}
       if(e.shiftKey&&atkUnits.length>0){
         for(const u of atkUnits)commandUnit(u,clickedEnemy?{type:"attack",target:clickedEnemy}:{type:"amove",x:world.x,y:world.y},true);
@@ -5682,9 +5727,7 @@ canvas.addEventListener("mouseup",e=>{
     }
     // Shift+clic / Ctrl+clic sobre una unidad propia (como en WC3)
     {
-      let propia=null;
-      for(let s of soldiers)if(Math.hypot(world.x-s.x,world.y-s.y)<=Math.max(s.radius+5,20)){propia=s;break;}
-      if(!propia)for(let w2 of workers)if(!w2.hidden&&Math.hypot(world.x-w2.x,world.y-w2.y)<=20){propia=w2;break;}
+      const propia=unidadEnPunto(e,[soldiers,workers]);
       if(propia&&e.ctrlKey){seleccionarMismoTipo(propia);return;}
       if(propia&&e.shiftKey){
         const i=selectedUnits.indexOf(propia);
@@ -5693,10 +5736,7 @@ canvas.addEventListener("mouseup",e=>{
       }
     }
     selected=null;selectedUnits=[];tabFocusType=null;grupoActivo=null;grupoActivoN=null;tabTypeCycle=[];tabTypeIndex=0;
-    for(let s of soldiers)if(Math.hypot(world.x-s.x,world.y-s.y)<=Math.max(s.radius+5,20)){selected=s;selectedUnits=[s];updateBottomUI();return;}
-    for(let w2 of workers)if(!w2.hidden&&Math.hypot(world.x-w2.x,world.y-w2.y)<=20){selected=w2;selectedUnits=[w2];updateBottomUI();return;}
-    for(let en of enemies)if(Math.hypot(world.x-en.x,world.y-en.y)<=Math.max(en.radius+5,20)){selected=en;selectedUnits=[en];updateBottomUI();return;}
-    for(let n of neutralUnits)if(Math.hypot(world.x-n.x,world.y-n.y)<=Math.max(n.radius+5,20)){selected=n;selectedUnits=[n];updateBottomUI();return;}
+    {const u=unidadEnPunto(e,[soldiers,workers,enemies,neutralUnits]);if(u){selected=u;selectedUnits=[u];updateBottomUI();return;}}
     for(let str of structures)if(world.x>str.x&&world.x<str.x+str.size&&world.y>str.y&&world.y<str.y+str.size){selected=str;updateBottomUI();return;}
     updateBottomUI();
   } else {
@@ -5705,8 +5745,14 @@ canvas.addEventListener("mouseup",e=>{
     let minY=Math.min(dragStartY,dragEndY),maxY=Math.max(dragStartY,dragEndY);
     if(!e.shiftKey)selectedUnits=[]; // Shift+recuadro: suma a la selección
     selected=null;tabFocusType=null;grupoActivo=null;grupoActivoN=null;tabTypeCycle=[];tabTypeIndex=0;
-    for(let w2 of workers){if(w2.hidden||selectedUnits.includes(w2))continue;const p=worldToIso(w2.x,w2.y);if(p.x>=minX&&p.x<=maxX&&p.y>=minY&&p.y<=maxY&&selectedUnits.length<40)selectedUnits.push(w2);}
-    for(let s of soldiers){if(selectedUnits.includes(s))continue;const p=worldToIso(s.x,s.y);if(p.x>=minX&&p.x<=maxX&&p.y>=minY&&p.y<=maxY&&selectedUnits.length<40)selectedUnits.push(s);}
+    // entra si el recuadro toca sus pies o la parte central de su cuerpo
+    const dentro=u=>{const p=worldToIso(u.x,u.y),c=u._caja;
+      if(p.x>=minX&&p.x<=maxX&&p.y>=minY&&p.y<=maxY)return true;
+      if(!c||frameDibujo-c.t>3)return false;
+      const w=c.x1-c.x0,h=c.y1-c.y0,ax=c.x0+w*0.25,bx=c.x1-w*0.25,ay=c.y0+h*0.2;
+      return maxX>=ax&&minX<=bx&&maxY>=ay&&minY<=c.y1;};
+    for(let w2 of workers){if(w2.hidden||selectedUnits.includes(w2))continue;if(dentro(w2)&&selectedUnits.length<40)selectedUnits.push(w2);}
+    for(let s of soldiers){if(selectedUnits.includes(s))continue;if(dentro(s)&&selectedUnits.length<40)selectedUnits.push(s);}
     if(selectedUnits.length===1)selected=selectedUnits[0];
     updateBottomUI();
   }
@@ -5737,8 +5783,7 @@ canvas.addEventListener("contextmenu",e=>{
   // clic derecho sobre un enemigo (unidad, criatura o edificio): los soldados lo atacan
   {
     let obj=null;
-    for(const en of enemies)if(isTileVisible(en.x,en.y)&&Math.hypot(world.x-en.x,world.y-en.y)<=en.radius+8){obj=en;break;}
-    if(!obj)for(const n of neutralUnits)if(isTileVisible(n.x,n.y)&&Math.hypot(world.x-n.x,world.y-n.y)<=n.radius+8){obj=n;break;}
+    obj=unidadEnPunto(e,[enemies,neutralUnits],u=>isTileVisible(u.x,u.y));
     if(!obj)for(const st of structures)if(st.team==="enemy"&&world.x>st.x-4&&world.x<st.x+st.size+4&&world.y>st.y-4&&world.y<st.y+st.size+4&&isTileVisible(st.x+st.size/2,st.y+st.size/2)){obj=st;break;}
     const atk=selectedUnits.filter(u=>u.type==="soldier");
     if(obj&&atk.length){
@@ -7659,11 +7704,24 @@ function drawUnit(u,isSel,fillColor,strokeColor,shape,iconTxt,spriteKey){
     }
   }
   if(spr){
-    // los pies del dibujo se apoyan sobre la sombra de la unidad
-    drawAnimFrame(spr,ux,uy+(u.radius||10)*0.35+(spr.offY||0),spr.drawW||(u.radius||10)*2.8,1);
+    // los pies del dibujo se apoyan sobre la sombra de la unidad: se calcula solo
+    // con los píxeles de la tira (limitesClip); "ajusteY" en el clip lo corre a mano
+    const r0=u.radius||10,ancho=spr.drawW||r0*2.8,esc=ancho/spr.sw,lim=spr.clip&&limitesClip(spr.clip,spr.img);
+    const piso=uy+r0*0.35+(lim?r0*0.15+(spr.clip.ajusteY||0):0);
+    const base=lim?piso+(spr.sh-lim.pies)*esc:piso+(spr.offY||0);
+    drawAnimFrame(spr,ux,base,ancho,1);
+    // la caja del cuerpo (en pantalla) para poder elegirla con el mouse
+    const cx=ux+(spr.offX||0)*(spr.flip?-1:1),izq0=cx-ancho/2,top=base-spr.sh*esc;
+    let x0,x1,y0;
+    if(lim){
+      if(spr.flip){x0=cx+ancho/2-lim.der*esc;x1=cx+ancho/2-lim.izq*esc;}else{x0=izq0+lim.izq*esc;x1=izq0+lim.der*esc;}
+      y0=top+lim.arriba*esc;
+    } else {x0=cx-ancho*0.32;x1=cx+ancho*0.32;y0=top+spr.sh*esc*0.15;}
+    u._caja={x0,x1,y0,y1:Math.max(piso,uy+r0*0.5),t:frameDibujo};
   } else if(iconTxt){
     ctx.font="9px sans-serif";ctx.textAlign="center";ctx.fillStyle="rgba(255,255,255,0.9)";ctx.fillText(iconTxt,ux,uy+4);
   }
+  if(!spr){const r0=u.radius||10;u._caja={x0:ux-r0-4,x1:ux+r0+4,y0:uy-r0-6,y1:uy+r0*0.6,t:frameDibujo};}
   // HP bar
   const r=u.radius||10;
   if(verBarras){
@@ -7730,7 +7788,9 @@ function getVisibleWorldBounds(){
   return{minX,minY,maxX,maxY};
 }
 
+let frameDibujo=0;
 function draw(){
+  frameDibujo++;
   const dpr=dprActual();
   ESCALA_RES=zoomLevel*dpr;
   camX=Math.round(mapWrapper.scrollLeft*dpr);camY=Math.round(mapWrapper.scrollTop*dpr);
