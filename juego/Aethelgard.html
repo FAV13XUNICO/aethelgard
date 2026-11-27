@@ -908,7 +908,8 @@ const ARTE_UNIDADES={
   // un PNG por unidad: cada FILA es una animación (fila:0 = la de arriba). frameW/frameH = tamaño de un cuadro.
   soldado:       {idle:  {sheet:"centinela_plasma-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:8,drawW:70,offY:3,offX:-4},
                   attack:{sheet:"centinela_plasma-sheet.png",fila:1,count:6,frameW:100,frameH:100,fps:14,disparoEn:2,drawW:70,offY:6,offX:-7}},   // Centinela de Plasma (fila 0 quieto, fila 1 espadazo)
-  fusilero:      {sheet:"arquero_disparador-sheet.png",count:5,fps:10,drawW:90,offY:19,offX:4},   // Emisor de Pulso (el arquero Kaelen)
+  fusilero:      {idle:  {sheet:"arquero_disparador-sheet.png",fila:0,count:5,frameW:100,frameH:100,fps:10,drawW:90,offY:19,offX:4},
+                  attack:{sheet:"arquero_disparador-sheet.png",fila:1,count:9,frameW:100,frameH:100,fps:14,disparoEn:5,drawW:90,offY:19,offX:4}},   // Emisor de Pulso (filas: quieto · disparando)
   caballero:     {idle:{sheet:"coloso_blindado-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:6,drawW:76,offY:12,offX:-3},
                   walk:{sheet:"coloso_blindado-sheet.png",fila:1,count:7,frameW:100,frameH:100,fps:10,drawW:76,offY:11,offX:-2}}, // Coloso Blindado (fila 0 quieto, fila 1 caminando)
   sacerdote:     {idle:{sheet:"alien_curandero.png",count:3,fps:4,drawW:70,offY:9,offX:-1},
@@ -920,7 +921,8 @@ const ARTE_UNIDADES={
   rompehechizos: "",   // Disruptor de Escudos
   // — Coalición Terrestre (IA) —
   heroe_enemigo:     {idle:  {sheet:"general_voss-sheet.png",fila:0,count:7,frameW:100,frameH:100,fps:7,drawW:96,offY:16,offX:6},
-                      attack:{sheet:"general_voss-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:14,disparoEn:4,drawW:96,offY:18,offX:8}},   // (filas: quieto · disparando)   // General Voss (antes era el dibujo del Exo-traje Pesado)
+                      attack:{sheet:"general_voss-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:14,disparoEn:4,drawW:96,offY:18,offX:8},
+                      walk:  {sheet:"general_voss-sheet.png",fila:2,count:5,frameW:100,frameH:100,fps:10,drawW:96,offY:16,offX:6}},   // (filas: quieto · disparando · caminando: el paladín astronauta)   // General Voss (antes era el dibujo del Exo-traje Pesado)
   obrero_enemigo:    {idle:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,cuadros:[0],drawW:72,offY:13,offX:4},
                       work:{sheet:"ingeniero_campo-sheet.png",fila:0,count:3,frameW:100,frameH:100,fps:6,drawW:72,offY:13,offX:4},
                       walk:{sheet:"ingeniero_campo-sheet.png",fila:1,count:8,frameW:100,frameH:100,fps:11,drawW:72,offY:13,offX:4},
@@ -952,7 +954,8 @@ const ARTE_UNIDADES={
   oso:       {idle:  {sheet:"slime_blindado-sheet.png",fila:0,count:4,frameW:100,frameH:100,fps:6,drawW:90,offY:9,offX:-1},
               walk:  {sheet:"slime_blindado-sheet.png",fila:1,count:4,frameW:100,frameH:100,fps:8,drawW:90,offY:10,offX:-5},
               attack:{sheet:"slime_blindado-sheet.png",fila:2,count:6,frameW:100,frameH:100,fps:12,disparoEn:3,drawW:90,offY:10,offX:-2}},   // Slime Blindado (filas: quieto · caminando · atacando)
-  ogro_jefe: {sheet:"titan_de_la_jungla-sheet.png",count:4,frameW:120,frameH:120,fps:5,drawW:150,offY:30,offX:-1},   // Titán Obeso (jefe neutral; cuadros de 120×120)
+  ogro_jefe: {idle:{sheet:"titan_de_la_jungla-sheet.png",fila:0,count:4,frameW:120,frameH:120,fps:5,drawW:150,offY:30,offX:-1},
+              walk:{sheet:"titan_de_la_jungla-sheet.png",fila:1,count:5,frameW:120,frameH:120,fps:8,drawW:150,offY:30,offX:8}},   // Titán Obeso (jefe neutral; cuadros de 120×120; filas: quieto · caminando)
 };
 
 // Edificios: se apoyan sobre su huella. drawW por defecto = ancho de la huella.
@@ -960,19 +963,29 @@ const ARTE_ESTRUCTURAS={
   // — Dominio Kaelen (jugador) —
   base:      "",   // Núcleo Central (3x3)
   barracks:  {sheet:"gate-sheet.png",count:7,fps:7,drawW:190,offY:29,offX:2},   // Forja de Autómatas: el cuartel Kaelen (el portal con el remolino, como el Gateway protoss)
-  altar:     "",   // Cámara de Reconstrucción
-  sawmill:   "",   // Extractor de Energía
-  forge:     "",   // Laboratorio de Armamento
-  tower:     "",   // Torreta de Plasma
+  // Cámara de Reconstrucción: cerrada con el alien adentro (mientras revive a tu héroe), se abre cuando
+  // sale y se queda abierta. Al empezar a revivir otra vez se cierra (la apertura al revés).
+  altar:     {quieto:  {sheet:"camara_reconstruccion-sheet.png",fila:0,count:3,frameW:130,frameH:130,fps:4},
+              abriendo:{sheet:"camara_reconstruccion-sheet.png",fila:1,count:14,frameW:130,frameH:130,fps:12},
+              abierta: {sheet:"camara_reconstruccion-sheet.png",fila:2,count:1,frameW:130,frameH:130},escala:1.1},
+  sawmill:   {sheet:"extractor_energia-sheet.png",count:6,fps:6,escala:1.15},   // Extractor de Energía
+  forge:     {sheet:"laboratorio_armamento-sheet.png",count:4,fps:4},    // Laboratorio de Armamento
+  tower:     "torreta_plasma.png",                                       // Torreta de Plasma
   farm:      {sheet:"campo_de_plantas_extranas.png",count:3,fps:3,drawW:107,offY:13,offX:5},   // Generador de Soporte Vital (campo de plantas extrañas)
   sanctuary: "",   // Portal Dimensional
   // — Coalición Terrestre (IA) —
-  base_enemigo:     "",   // Cuartel General
-  barracks_enemigo: {sheet:"castillo_para_paladines.png",count:10,fps:8,drawW:255,offY:79,offX:11},  // Academia Militar
-  tower_enemigo:    "",   // Torreta de Defensa
+  base_enemigo:     {sheet:"base_aterrizaje.png",count:1,escala:0.75},   // Base de Aterrizaje: el cohete donde llegó la Coalición
+  // Cuartel General: la puerta se abre un momento cada vez que sale una tropa
+  barracks_enemigo: {quieto:    {sheet:"cuartel_general-sheet.png",count:2,cuadro:0},
+                     entrenando:{sheet:"cuartel_general-sheet.png",count:2,cuadro:1}},
+  tower_enemigo:    "torreta_defensa.png",   // Torreta de Defensa
   farm_enemigo:     {sheet:"casa_tecnologia-sheet.png",count:2,fps:2,drawW:112,offY:11,offX:11},   // Depósito de Suministros (la casa de tecnología, con las luces que parpadean)
   forge_enemigo:    {sheet:"fabrica_armamento-sheet.png",count:3,fps:3,drawW:209,offY:43,offX:2}, // Fábrica de Armamento (la forja de ladrillo)
-  // sin usar por ahora: casa_de_jipies_magos_png_67.png (la casa verde de los magos), robot_malo.png
+  // sin usar por ahora: casa_de_jipies_magos_png_67.png (la casa verde de los magos), robot_malo.png,
+  //   castillo_para_paladines.png (era el cuartel de la Coalición)
+  // SIN drawW/offY: el tamaño y la altura se calculan solos (el dibujo ocupa el ancho de la huella y
+  // su borde de abajo apoya en la esquina de adelante). escala:1.2 = 20% más grande. ajusteY: baja/sube.
+  // Con estados (quieto/entrenando/abriendo/abierta) el tamaño sale siempre del "quieto".
 };
 
 const ARTE_ESCENARIO={
@@ -1055,6 +1068,9 @@ const ARTE_INTERFAZ={
 const ARTE_PROYECTILES={
   enemigo_cazador: "",   // disparo del Francotirador (si queda vacío, es la bolita de color de siempre)
   fusilero:        "",   // Emisor de Pulso
+  torre:           {sheet:"rayo_plasma.png",count:1,drawW:16,girar:true},   // Torreta de Plasma (tuya)
+  torre_enemigo:   {sheet:"misil_torreta.png",count:1,drawW:40,girar:true,  // Torreta de Defensa (misil)
+                    impacto:{sheet:"impacto_misil.png",count:1,drawW:38}},  //   impacto = lo que queda un instante donde pega
 };
 
 // ── ANIMACIONES DE EDIFICIOS ── (mismos 3 formatos: "", "archivo.png" o {sheet,...})
@@ -1135,7 +1151,8 @@ const HUD_ZONAS={
 // Las tarjetas del grupo (cuando eliges varias unidades) usan el primer cuadro.
 const ARTE_RETRATOS={
   // ── Dominio Kaelen (tus unidades) ──
-  "Aeon Thraze":"", "Emisor de Pulso":"", "Unidad de Nanoreparación":"", "Disruptor de Escudos":"",
+  "Aeon Thraze":          {sheet:"retrato_aeon_thraze-sheet.png",count:4,fps:5,frameW:100,frameH:100,recorte:[14,24,72,52]},
+  "Emisor de Pulso":"", "Unidad de Nanoreparación":"", "Disruptor de Escudos":"",
   // recorte:[x,y,ancho,alto] = la pantallita de adentro de tu dibujo (sin el marco gris de la tele):
   // esa parte calza en el hueco del HUD y el marco queda escondido detrás del panel.
   "Dron Constructor":     {sheet:"retrato_dron_constructor-sheet.png",count:4,fps:5,frameW:100,frameH:100,recorte:[14,24,72,52]},
@@ -1149,7 +1166,7 @@ const ARTE_RETRATOS={
   "General Voss":"", "Ingeniero de Campo":"", "Soldado de Asalto":"", "Francotirador":"", "Médico de Campo":"",
   "Hacker de Combate":"", "Exo-traje Pesado":"", "Tanque Blindado":"", "Artillería Móvil":"", "Comando de Élite":"",
   // ── Coalición Terrestre (estructuras de la IA) ──
-  "Cuartel General":"", "Academia Militar":"", "Fábrica de Armamento":"", "Torreta de Defensa":"", "Depósito de Suministros":"",
+  "Base de Aterrizaje":"", "Cuartel General":"", "Fábrica de Armamento":"", "Torreta de Defensa":"", "Depósito de Suministros":"",
   // ── Neutrales ──
   "Reptante Infectado":"", "Gatoide Infectado":"", "Slime Blindado":"", "Titán Obeso":"",
   "Puesto del Mercader Errante":"",
@@ -1242,8 +1259,8 @@ const ENCICLOPEDIA_TEXTOS={
   "Torreta de Plasma":"Defensa fija que dispara sola a los enemigos cercanos.",
   "Generador de Soporte Vital":"Cada uno permite tener más unidades.",
   "Portal Dimensional":"Trae a las unidades lanzadoras: Nanoreparación, Manipuladora y Disruptor.",
-  "Cuartel General":"La base de la Coalición. Destrúyela para ganar.",
-  "Academia Militar":"Donde la Coalición entrena a sus tropas.",
+  "Base de Aterrizaje":"El cohete donde aterrizó la Coalición: de aquí salen sus primeros obreros. Destrúyela para ganar.",
+  "Cuartel General":"Donde la Coalición entrena a sus tropas.",
   "Torreta de Defensa":"Las torres humanas que protegen sus bases.",
   "Depósito de Suministros":"Le permite a la Coalición tener más tropas.",
   "Fábrica de Armamento":"Investiga el armamento mejorado de la Coalición.",
@@ -1722,8 +1739,9 @@ function refrescarLogros(){
 // Dibuja el primer cuadro de un dibujo tuyo en un canvas chico (o deja el emoji si no hay dibujo).
 function fichaDibujo(entrada,emoji){
   const caja=document.createElement("div");caja.className="enc-dibujo";caja.textContent=emoji||"❓";
-  const src=typeof entrada==="string"?entrada:(entrada&&(entrada.sheet||(entrada.idle&&(entrada.idle.sheet||entrada.idle))));
-  const e=typeof entrada==="object"&&entrada?(entrada.idle||entrada):{};
+  const base=typeof entrada==="object"&&entrada?(entrada.idle||entrada.quieto||entrada):null;   // quieto = edificios con estados
+  const src=typeof entrada==="string"?entrada:(base&&(base.sheet||(typeof base==="string"?base:null)));
+  const e=base&&typeof base==="object"?base:{};
   if(!src||typeof src!=="string")return caja;
   const img=getAnimImg(src);
   const pintar=()=>{if(!imgLista(img))return;const n=e.count||1,fw=e.frameW||img.naturalWidth/n,fh=e.frameH||img.naturalHeight;
@@ -1769,7 +1787,8 @@ function datosEnciclopedia(){
 }
 let encCategoria=null,encElegido=null;
 // ── Ficha completa (panel de la derecha): arriba todas sus animaciones, abajo su información ──
-const ENC_NOMBRES_ANIM={idle:"Quieto",walk:"Caminando",attack:"Atacando",work:"Trabajando",taladro:"Taladrando",habilidad:"Habilidad"};
+const ENC_NOMBRES_ANIM={idle:"Quieto",walk:"Caminando",attack:"Atacando",work:"Trabajando",taladro:"Taladrando",habilidad:"Habilidad",
+  quieto:"Quieto",entrenando:"Entrenando",abriendo:"Abriéndose",abierta:"Abierta"};
 const ENC_EDIF_BOTON={"Núcleo Central":"cmd-b-base","Forja de Autómatas":"cmd-b-barracks","Cámara de Reconstrucción":"cmd-b-altar","Extractor de Energía":"cmd-b-sawmill",
   "Laboratorio de Armamento":"cmd-b-forge","Torreta de Plasma":"cmd-b-tower","Generador de Soporte Vital":"cmd-b-farm","Portal Dimensional":"cmd-b-sanctuary",
   "Dron Constructor":"cmd-worker","Centinela de Plasma":"cmd-soldier","Emisor de Pulso":"cmd-rifleman","Coloso Blindado":"cmd-knight",
@@ -1785,7 +1804,7 @@ const ENC_DETALLE={
   "Disruptor de Escudos":{extra:["Se entrena en el Portal Dimensional","Robar Hechizos · Resistencia Mágica · Retroalimentación"]},
   "General Voss":{rol:"Héroe enemigo",extra:["Granada: daño en área si tiene 3 o más de tus tropas cerca","Sube de nivel limpiando campamentos neutrales","Compra objetos al Mercader Errante y los usa en combate"]},
   "Ingeniero de Campo":{rol:"Obrero enemigo",extra:["Mina cristal, pica metal de las rocas y construye la base de la Coalición","Al principio de la partida, uno sale a explorar tu base"]},
-  "Soldado de Asalto":{rol:"Infantería cuerpo a cuerpo",extra:["Se entrena en la Academia Militar"]},
+  "Soldado de Asalto":{rol:"Infantería cuerpo a cuerpo",extra:["Se entrena en el Cuartel General"]},
   "Francotirador":{rol:"Unidad a distancia",extra:["Alcance: 170","Huye cuando le queda poca vida"]},
   "Exo-traje Pesado":{rol:"Unidad pesada",extra:["Lento pero muy resistente"]},
   "Hacker de Combate":{rol:"Lanzador a distancia",extra:["Alcance: 260","Prefiere a las unidades que curan"]},
@@ -1793,8 +1812,8 @@ const ENC_DETALLE={
   "Tanque Blindado":{rol:"Unidad de asedio pesada",extra:["Aparece si tienes torretas o Colosos"]},
   "Comando de Élite":{rol:"Asesino",extra:["Ignora a tus soldados: va directo por tus obreros y edificios"]},
   "Artillería Móvil":{rol:"Asedio a distancia",extra:["Alcance: 380","Aparece si tienes varias torretas"]},
-  "Academia Militar":{rol:"Cuartel enemigo"},"Torreta de Defensa":{rol:"Defensa enemiga"},"Depósito de Suministros":{rol:"Suministro enemigo"},
-  "Fábrica de Armamento":{rol:"Mejoras enemigas"},"Cuartel General":{rol:"Edificio principal enemigo"},
+  "Cuartel General":{rol:"Cuartel enemigo"},"Torreta de Defensa":{rol:"Defensa enemiga"},"Depósito de Suministros":{rol:"Suministro enemigo"},
+  "Fábrica de Armamento":{rol:"Mejoras enemigas"},"Base de Aterrizaje":{rol:"Edificio principal enemigo"},
   "Puesto del Mercader Errante":{rol:"Tienda neutral",extra:["Tu héroe compra aquí objetos con cristal"]},
 };
 function rolEnc(nombre,cat){
@@ -1868,9 +1887,10 @@ function abrirDetalleEnc(entrada,ficha){
       const g=L.cv.getContext("2d");g.imageSmoothingEnabled=false;g.clearRect(0,0,116,116);
       let sx=0,sy=0,fw=img.naturalWidth,fh=img.naturalHeight;
       if(typeof L.clip!=="string"){
-        fw=L.clip.frameW||img.naturalWidth/L.n;fh=L.clip.frameH||img.naturalHeight;
+        const tot=L.clip.count||L.n;   // cuadros de la tira (aunque se muestre uno solo)
+        fw=L.clip.frameW||img.naturalWidth/tot;fh=L.clip.frameH||img.naturalHeight;
         const lista=L.clip.cuadro!=null?[L.clip.cuadro]:L.clip.cuadros,i=Math.floor(t*(L.clip.fps||6)*VELOCIDAD_ANIMACION);
-        sx=((lista&&lista.length?lista[i%lista.length]:i)%L.n)*fw;sy=(L.clip.fila||0)*fh;
+        sx=((lista&&lista.length?lista[i%lista.length]:i)%tot)*fw;sy=(L.clip.fila||0)*fh;
       }
       const k=Math.min(108/fw,108/fh);
       g.drawImage(img,sx,sy,fw,fh,(116-fw*k)/2,(116-fh*k)/2,fw*k,fh*k);
@@ -1912,7 +1932,7 @@ function pantallaCarga(alTerminar){
   document.getElementById("carga-texto").textContent=CONSEJOS[Math.floor(Math.random()*CONSEJOS.length)]||"";
   // todas las imágenes que usa el juego
   const srcs=new Set();const mirar=v=>{if(!v)return;if(typeof v==="string"){if(/\.(png|jpe?g|gif|webp)$/i.test(v))srcs.add(v);}else if(typeof v==="object")for(const k in v)mirar(v[k]);};
-  for(const t of [ARTE_UNIDADES,ARTE_ESTRUCTURAS,ARTE_ESTRUCTURAS_NEUTRALES,ARTE_OBJETOS,ARTE_ESCENARIO,ARTE_BOTONES,ARTE_INTERFAZ,ARTE_ANIMACIONES,ARTE_HUD,ARTE_RETRATOS])mirar(t);
+  for(const t of [ARTE_UNIDADES,ARTE_ESTRUCTURAS,ARTE_ESTRUCTURAS_NEUTRALES,ARTE_OBJETOS,ARTE_ESCENARIO,ARTE_BOTONES,ARTE_INTERFAZ,ARTE_ANIMACIONES,ARTE_HUD,ARTE_RETRATOS,ARTE_PROYECTILES])mirar(t);
   const imgs=[...srcs].map(s=>getAnimImg(s));
   // un dibujo tuyo al azar (de las unidades que tienen hoja de sprites)
   const conArte=Object.values(ARTE_UNIDADES).map(e=>e&&(e.idle||e)).filter(e=>e&&(typeof e==="string"?e:e.sheet));
@@ -1952,7 +1972,7 @@ const ARTE_PANTALLAS={
   logros_bloqueados:["logro_bloqueado_1.png","logro_bloqueado_2.png","logro_bloqueado_3.png","logro_bloqueado_4.png","logro_bloqueado_5.png"],
 };
 // tu abecedario: [x en la hoja, ancho, alto, distancia a la línea de abajo]
-const FUENTE_DIBUJADA={g:{"A": [0, 19, 23, 1], "B": [21, 16, 23, 1], "C": [39, 18, 22, 1], "D": [59, 13, 22, 1], "E": [74, 13, 23, 0], "F": [89, 11, 23, 0], "G": [102, 16, 21, 0], "H": [120, 18, 22, 0], "I": [140, 19, 22, 1], "J": [161, 20, 22, 1], "K": [183, 17, 24, 1], "L": [202, 15, 25, 0], "M": [219, 20, 23, 1], "N": [241, 18, 22, 1], "Ñ": [261, 18, 29, 1], "O": [281, 15, 22, 0], "P": [298, 14, 21, 1], "Q": [314, 15, 22, 0], "R": [331, 16, 23, 0], "S": [349, 16, 21, 1], "T": [367, 14, 23, 0], "U": [383, 14, 20, 0], "V": [399, 17, 19, 1], "W": [418, 25, 19, 0], "X": [445, 21, 20, 0], "Y": [468, 16, 19, 0], "Z": [486, 17, 18, 0], "´": [505, 8, 9, 7]},c:{"A": [0, 12, 18, 0], "B": [14, 12, 17, 0], "C": [28, 13, 16, 1], "D": [43, 10, 16, 1], "E": [55, 10, 13, 2], "F": [67, 8, 17, 0], "G": [77, 11, 15, 0], "H": [90, 14, 16, 0], "I": [106, 14, 16, 1], "J": [122, 15, 16, 1], "K": [139, 12, 16, 1], "L": [153, 11, 17, 0], "M": [166, 15, 16, 1], "N": [183, 13, 16, 0], "Ñ": [198, 13, 20, 1], "O": [213, 11, 15, 0], "P": [226, 11, 14, 1], "Q": [239, 10, 15, 0], "R": [251, 12, 16, 0], "S": [265, 11, 15, 2], "T": [278, 11, 17, 1], "U": [291, 10, 14, 1], "V": [303, 12, 13, 2], "W": [317, 17, 13, 1], "X": [336, 15, 14, 1], "Y": [353, 11, 15, 0], "Z": [366, 13, 13, 1], "´": [381, 6, 7, 6]},p:{"a":[0,10,12,0],"b":[11,9,12,0],"c":[21,9,11,0],"d":[31,9,13,0],"e":[41,8,12,0],"f":[50,10,14,0],"g":[61,9,14,0],"h":[71,9,14,0],"i":[81,4,12,0],"j":[86,7,15,0],"k":[94,11,15,0],"l":[106,6,14,0],"m":[113,17,12,0],"n":[131,11,13,0],"o":[143,9,10,0],"p":[153,8,12,0],"q":[162,12,16,0],"r":[175,12,12,0],"s":[188,11,12,0],"t":[200,10,13,0],"u":[211,9,11,0],"v":[221,9,11,0],"w":[231,15,12,0],"x":[247,12,11,0],"y":[260,10,13,0],"z":[271,10,13,0],"-":[282,6,5,3]},tam:{g:[515,29],c:[389,20],p:[289,16]}};
+const FUENTE_DIBUJADA={g:{"A": [0, 19, 23, 1], "B": [21, 16, 23, 1], "C": [39, 18, 22, 1], "D": [59, 13, 22, 1], "E": [74, 13, 23, 0], "F": [89, 11, 23, 0], "G": [102, 16, 21, 0], "H": [120, 18, 22, 0], "I": [140, 19, 22, 1], "J": [161, 20, 22, 1], "K": [183, 17, 24, 1], "L": [202, 15, 25, 0], "M": [219, 20, 23, 1], "N": [241, 18, 22, 1], "Ñ": [261, 18, 29, 1], "O": [281, 15, 22, 0], "P": [298, 14, 21, 1], "Q": [314, 15, 22, 0], "R": [331, 16, 23, 0], "S": [349, 16, 21, 1], "T": [367, 14, 23, 0], "U": [383, 14, 20, 0], "V": [399, 17, 19, 1], "W": [418, 25, 19, 0], "X": [445, 21, 20, 0], "Y": [468, 16, 19, 0], "Z": [486, 17, 18, 0], "´": [505, 8, 9, 7]},c:{"1": [391, 12, 14, 1], "2": [405, 10, 14, 1], "3": [417, 9, 15, 1], "4": [428, 8, 13, 1], "5": [438, 11, 13, 1], "6": [451, 9, 13, 1], "7": [462, 8, 12, 1], "8": [472, 10, 12, 1], "9": [484, 9, 11, 1], "0": [495, 7, 12, 1], "A": [0, 12, 18, 0], "B": [14, 12, 17, 0], "C": [28, 13, 16, 1], "D": [43, 10, 16, 1], "E": [55, 10, 13, 2], "F": [67, 8, 17, 0], "G": [77, 11, 15, 0], "H": [90, 14, 16, 0], "I": [106, 14, 16, 1], "J": [122, 15, 16, 1], "K": [139, 12, 16, 1], "L": [153, 11, 17, 0], "M": [166, 15, 16, 1], "N": [183, 13, 16, 0], "Ñ": [198, 13, 20, 1], "O": [213, 11, 15, 0], "P": [226, 11, 14, 1], "Q": [239, 10, 15, 0], "R": [251, 12, 16, 0], "S": [265, 11, 15, 2], "T": [278, 11, 17, 1], "U": [291, 10, 14, 1], "V": [303, 12, 13, 2], "W": [317, 17, 13, 1], "X": [336, 15, 14, 1], "Y": [353, 11, 15, 0], "Z": [366, 13, 13, 1], "´": [381, 6, 7, 6]},p:{"1": [291, 9, 13, 1], "2": [302, 9, 13, 1], "3": [313, 8, 12, 1], "4": [323, 7, 12, 1], "5": [332, 10, 12, 1], "6": [344, 9, 12, 1], "7": [355, 7, 11, 1], "8": [364, 9, 12, 1], "9": [375, 9, 12, 1], "0": [386, 8, 13, 1], "/": [396, 11, 11, 1], "(": [409, 6, 15, -1], ")": [417, 6, 16, -1], "a":[0,10,12,0],"b":[11,9,12,0],"c":[21,9,11,0],"d":[31,9,13,0],"e":[41,8,12,0],"f":[50,10,14,0],"g":[61,9,14,0],"h":[71,9,14,0],"i":[81,4,12,0],"j":[86,7,15,0],"k":[94,11,15,0],"l":[106,6,14,0],"m":[113,17,12,0],"n":[131,11,13,0],"o":[143,9,10,0],"p":[153,8,12,0],"q":[162,12,16,0],"r":[175,12,12,0],"s":[188,11,12,0],"t":[200,10,13,0],"u":[211,9,11,0],"v":[221,9,11,0],"w":[231,15,12,0],"x":[247,12,11,0],"y":[260,10,13,0],"z":[271,10,13,0],"-":[282,6,5,3]},tam:{g:[515,29],c:[502,20],p:[423,16]}};
 // Escribe un texto con tus letras dibujadas (las que no existen, como los números, salen en letra común)
 // (las palabras pasan solas a la línea de abajo si no entran)
 const fuenteLista={g:false,c:false,p:false};
@@ -1972,7 +1992,7 @@ function textoDibujado(txt,tam="g",esc=1,minusculas=false){
   for(const palabra of (conMin?String(txt):String(txt).toUpperCase()).split(/\s+/).filter(Boolean)){
     h+=`<span class="txt-palabra" style="gap:${sep}px">`;
     for(const ch of palabra){
-      if(conMin&&MP[ch]){h+=glifoP(ch);continue;}
+      if(conMin&&MP[ch]&&!/[0-9]/.test(ch)){h+=glifoP(ch);continue;}   // los números van con las letras chicas (altura de mayúscula)
       const baseMin=conMin&&{"á":"a","é":"e","í":"i","ó":"o","ú":"u","ü":"u"}[ch];
       if(baseMin){h+=`<span class="glifo-tilde">${glifoP(baseMin)}<span class="tilde" style="top:${-(M["´"][2]+1)*esc}px">${glifo("´")}</span></span>`;continue;}
       if(conMin&&ch==="ñ"){h+=glifoP("n");continue;}
@@ -1980,6 +2000,11 @@ function textoDibujado(txt,tam="g",esc=1,minusculas=false){
       if(M[ch])h+=glifo(ch);
       else if(conMin&&M[ch.toUpperCase()])h+=glifo(ch.toUpperCase());
       else if(base)h+=`<span class="glifo-tilde">${glifo(base)}<span class="tilde" style="top:${-(M["´"][2]+1)*esc}px">${glifo("´")}</span></span>`;
+      else if(tam==="g"&&FUENTE_DIBUJADA.c[ch]&&fuenteLista.c){   // las grandes no tienen números: se usan los de las chicas, más grandes
+        const m=FUENTE_DIBUJADA.c[ch],[CW,CH]=FUENTE_DIBUJADA.tam.c,e2=esc*1.35,ac=rutaArte(ARTE_PANTALLAS.letras_chicas);
+        h+=`<span class="glifo" style="width:${m[1]*e2}px;height:${m[2]*e2}px;margin-bottom:${m[3]*e2}px;background-image:url('${ac}');background-position:${-m[0]*e2}px 0;background-size:${CW*e2}px ${CH*e2}px"></span>`;
+      }
+      else if(MP[ch]&&fuenteLista.p)h+=glifoP(ch);   // / ( ) y números en las pequeñas
       else h+=`<span class="glifo-texto" style="font-size:${M.A[2]*esc*0.95}px;-webkit-text-stroke:${Math.max(1,esc*1.4)}px #000">${ch.replace(/[<>&]/g,"")}</span>`;
     }
     h+="</span>";
@@ -2742,7 +2767,7 @@ let aiReserva=0;             // cristal que está guardando para un edificio o u
 let aiReservaObj=0;          // cristal que aparta para que el General Voss se compre un objeto
 let aiCreep=null;            // el General Voss limpiando un campamento: {camp, unidades}
 const aiBuildPlan=[
-  {type:"barracks",name:"Academia Militar",size:80,cost:400,lumberCost:0,hp:700,maxHp:700,offsetX:-200,offsetY:200},
+  {type:"barracks",name:"Cuartel General",size:80,cost:400,lumberCost:0,hp:700,maxHp:700,offsetX:-200,offsetY:200},
   {type:"tower",name:"Torreta de Defensa",size:80,cost:100,lumberCost:0,hp:180,maxHp:180,offsetX:-80,offsetY:120},
   {type:"farm",name:"Depósito de Suministros",size:40,cost:150,lumberCost:50,hp:200,maxHp:200,offsetX:-160,offsetY:80},
   {type:"tower",name:"Torreta de Defensa",size:80,cost:100,lumberCost:0,hp:180,maxHp:180,offsetX:80,offsetY:180},
@@ -3476,15 +3501,18 @@ function sceneryFrame(entry){
   if(!entry)return null;
   if(typeof entry==="string"){
     const img=getAnimImg(entry);
-    return imgLista(img)?{img,sx:0,sy:0,sw:img.naturalWidth,sh:img.naturalHeight,flip:false}:null;
+    if(!imgLista(img))return null;
+    const clip=_clipDeTexto[entry]||(_clipDeTexto[entry]={sheet:entry,count:1});
+    return {img,clip,sx:0,sy:0,sw:img.naturalWidth,sh:img.naturalHeight,flip:false};
   }
   if(!entry.sheet)return null;
   const img=getAnimImg(entry.sheet);
   if(!imgLista(img))return null;
   const n=entry.count||1,fw=entry.frameW||img.naturalWidth/n,fh=entry.frameH||img.naturalHeight;
   const i=entry.cuadro!=null?entry.cuadro%n:Math.floor(performance.now()/1000*(entry.fps||4)*VELOCIDAD_ANIMACION)%n;
-  return {img,sx:i*fw,sy:(entry.fila||0)*fh,sw:fw,sh:fh,flip:false,drawW:entry.drawW,offY:entry.offY||0,offX:entry.offX||0};
+  return {img,clip:entry,sx:i*fw,sy:(entry.fila||0)*fh,sw:fw,sh:fh,flip:false,drawW:entry.drawW,offY:entry.offY||0,offX:entry.offX||0};
 }
+const _clipDeTexto={};
 // Dibuja el frame centrado en x=cx con `width` px de ancho (el alto respeta la
 // proporción de tu imagen). anchorY: 0.5 = centrado, 1 = cy es el borde de abajo.
 function drawAnimFrame(frame,cx,cy,width,anchorY){
@@ -4038,7 +4066,7 @@ function drawStarShape(size){
 const structures=[
   // (las dos bases quedan a ~200 px de su mina, antes estaban a 90-140 y los obreros se amontonaban)
   {name:"Núcleo Central",x:800,y:3880,size:TILE*3,hp:500,maxHp:500,type:"base",tier:1,isUnderConstruction:false,progress:100,trainingProgress:0,queue:[],team:"player",rallyX:960,rallyY:3840},
-  {name:"Cuartel General",x:3720,y:920,size:TILE*3,hp:1200,maxHp:1200,type:"base",isUnderConstruction:false,progress:100,trainingProgress:0,queue:[],team:"enemy"},
+  {name:"Base de Aterrizaje",x:3720,y:920,size:TILE*3,hp:1200,maxHp:1200,type:"base",isUnderConstruction:false,progress:100,trainingProgress:0,queue:[],team:"enemy"},
 ];
 // Cada mina: {x,y,size,label}. El índice en el array reemplaza a los nombres sueltos
 // (mine, mine2, mineCentral, mine3, mine4) — para agregar una mina nueva, solo se
@@ -5409,7 +5437,7 @@ function snapBuildPos(centerX,centerY,size){
 }
 
 // ═══════════════ UI FUNCTIONS ═══════════════
-const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Cuartel General":"💀","Academia Militar":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Infectado":"🐗","Gatoide Infectado":"🐺","Slime Blindado":"🐻","Titán Obeso":"👹","Puesto del Mercader Errante":"🛒"};
+const PORTRAITS={"Aeon Thraze":"👑","Dron Constructor":"⛏️","Centinela de Plasma":"⚡","Emisor de Pulso":"🔫","Coloso Blindado":"🛡️","Núcleo Central":"🏰","Forja de Autómatas":"⚔️","Cámara de Reconstrucción":"🌟","Extractor de Energía":"🔩","Laboratorio de Armamento":"🔨","Torreta de Plasma":"🗼","Generador de Soporte Vital":"🌾","Base de Aterrizaje":"💀","Cuartel General":"☠️","Torreta de Defensa":"🗼","Depósito de Suministros":"🌾","Fábrica de Armamento":"🔨","Portal Dimensional":"🔮","Unidad de Nanoreparación":"🔧","Manipuladora Cuántica":"⚛️","Disruptor de Escudos":"🌀","General Voss":"⚔️","Reptante Infectado":"🐗","Gatoide Infectado":"🐺","Slime Blindado":"🐻","Titán Obeso":"👹","Puesto del Mercader Errante":"🛒"};
 
 function renderQueue(str){queueBox.innerHTML="";if(!str.queue||str.queue.length===0)return;str.queue.forEach((item,i)=>{let sl=document.createElement("div");sl.className="queue-slot";sl.textContent=item.name;sl.onclick=ev=>{ev.stopPropagation();cancelQueueItem(str,i);};queueBox.appendChild(sl);});}
 function cancelQueueItem(str,i){let c=str.queue.splice(i,1)[0];gold+=c.goldCost||0;lumber+=c.lumberCost||0;if(i===0)str.trainingProgress=0;updateBottomUI();}
@@ -6170,7 +6198,7 @@ function repartirTrabajoIA(){
     const w=pican.find(w=>!(w.carrying>0));if(w){w.state="mine";w.targetTree=null;}
   }
 }
-// Igual que tus obreros: camina a la roca más cercana, la pica y lleva el metal al Cuartel General.
+// Igual que tus obreros: camina a la roca más cercana, la pica y lleva el metal a la Base de Aterrizaje.
 function picarMetalIA(w){
   const base=findNearestAIBase(w);
   if(!base){w.state="mine";return;}
@@ -6225,7 +6253,7 @@ function puestoReserva(i){
   return {x:aiRallyX+px*col*42-fx*fila*40,y:aiRallyY+py*col*42-fy*fila*40};
 }
 // El punto de reunión ya no queda pegado al cuartel: se pone SOBRE EL CAMINO hacia tu base,
-// unos 650 de distancia delante de su Cuartel General (la "puerta" de su base, como en WC3).
+// unos 650 de distancia delante de su Base de Aterrizaje (la "puerta" de su base, como en WC3).
 let aiReunionLista=false;
 function calcularReunionIA(){
   const a=getAIBase(),pb=getPlayerBase();if(!a||!pb)return;
@@ -6657,15 +6685,15 @@ function puntajeObjetivoIA(en,s,d){
 // construye cada edificio desde cero con un ingeniero, investiga mejoras para subir
 // de nivel y se expande a otras minas cuando su economía lo pide.
 const IA_EDIFICIOS={  // seg = segundos que tarda en levantarse
-  barracks:{name:"Academia Militar",       size:80, cost:400,lumber:0,  hp:700, seg:40},
+  barracks:{name:"Cuartel General",       size:80, cost:400,lumber:0,  hp:700, seg:40},
   tower:   {name:"Torreta de Defensa",     size:80, cost:120,lumber:20, hp:200, seg:25},
   farm:    {name:"Depósito de Suministros",size:40, cost:150,lumber:50, hp:200, seg:20},
   forge:   {name:"Fábrica de Armamento",   size:80, cost:300,lumber:100,hp:400, seg:35},
-  base:    {name:"Cuartel General",        size:120,cost:500,lumber:100,hp:1000,seg:70},
+  base:    {name:"Base de Aterrizaje",        size:120,cost:500,lumber:100,hp:1000,seg:70},
 };
 const IA_MEJORAS={
-  tier2: {nombre:"Cuartel General Nivel 2",cost:350,lumber:100,seg:45,en:"base"},
-  tier3: {nombre:"Cuartel General Nivel 3",cost:600,lumber:200,seg:60,en:"base"},
+  tier2: {nombre:"Base de Aterrizaje Nivel 2",cost:350,lumber:100,seg:45,en:"base"},
+  tier3: {nombre:"Base de Aterrizaje Nivel 3",cost:600,lumber:200,seg:60,en:"base"},
   armas1:{nombre:"Armamento Mejorado",     cost:200,lumber:50, seg:35,en:"forge"},
   armas2:{nombre:"Armamento Avanzado",     cost:350,lumber:120,seg:45,en:"forge"},
 };
@@ -6821,7 +6849,7 @@ function iaMejoraLista(id){
   if(id==="tier2"||id==="tier3"){aiTier=id==="tier2"?2:3;}
   if(id==="armas1"||id==="armas2"){aiArmas=id==="armas1"?1:2;}
   const nuevo=Math.min(4,aiTier+Math.floor(aiArmas/2));
-  const txt={tier2:"🏛️ La Coalición mejoró su Cuartel General (Nivel 2): nuevas tropas",tier3:"🏛️ La Coalición mejoró su Cuartel General (Nivel 3): tropas de élite",
+  const txt={tier2:"🏛️ La Coalición mejoró su Base de Aterrizaje (Nivel 2): nuevas tropas",tier3:"🏛️ La Coalición mejoró su Base de Aterrizaje (Nivel 3): tropas de élite",
     armas1:"🔧 La Coalición mejoró su armamento",armas2:"🔧 La Coalición tiene armamento avanzado"}[id];
   if(txt)triggerAlert(txt,"#ff6644",260);
   if(nuevo>aiLevel)aiLevel=nuevo;
@@ -7201,12 +7229,23 @@ function processAI(dt){
   // enemy towers attack
   for(let str of structures){
     if(!str.isUnderConstruction&&str.type==="tower"&&str.team==="enemy"){
-      for(let s of soldiers){if(Math.hypot((str.x+20)-s.x,(str.y+20)-s.y)<200){s.hp-=0.3*(1+aiLevel*0.1);addHitFlash(s);break;}}
-      for(let w of workers){if(w.hidden)continue;if(Math.hypot((str.x+20)-w.x,(str.y+20)-w.y)<200){w.hp-=0.2;addHitFlash(w);break;}}
+      // dispara un misil cada TORRE_CADENCIA cuadros: primero a tus tropas, si no a tus obreros
+      if((str._cd=(str._cd||0)-1)>0)continue;
+      const cx=str.x+str.size/2,cy=str.y+str.size/2;
+      const s=soldiers.find(s=>s.hp>0&&Math.hypot(cx-s.x,cy-s.y)<200);
+      const w=s?null:workers.find(w=>!w.hidden&&w.hp>0&&Math.hypot(cx-w.x,cy-w.y)<200);
+      if(s){dispararTorre(str,s,0.3*(1+aiLevel*0.1)*TORRE_CADENCIA,"torre_enemigo","#ff7744");str._cd=TORRE_CADENCIA;}
+      else if(w){dispararTorre(str,w,0.2*TORRE_CADENCIA,"torre_enemigo","#ff7744");str._cd=TORRE_CADENCIA;}
     }
   }
 }
 
+// ── disparo de torreta: sale de lo alto de la torre y baja hasta el blanco ──
+const TORRE_CADENCIA=40;   // cuadros entre disparo y disparo (60 = 1 por segundo)
+function dispararTorre(str,tgt,dano,arte,color){
+  const cx=str.x+str.size/2,cy=str.y+str.size/2;
+  projectiles.push({x:cx,y:cy,target:tgt,speed:7,damage:Math.round(dano),color,owner:str,arte,alto0:str.size*0.9,d0:Math.max(1,Math.hypot(tgt.x-cx,tgt.y-cy))});
+}
 // ═══════════════ UPDATE ═══════════════
 function update(dt){
   revisarUsoPendiente();
@@ -7254,6 +7293,7 @@ function update(dt){
         levelUpFx.push(fx({x:ix,y:iy,r:10,life:0.6,maxR:55,delay:0,aoeColor:"#ff6600"}));
         for(let k=0;k<6;k++)particles.push(fx({x:ix,y:iy,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4-1,life:1,r:4,color:"#ff8800"}));
       } else {
+        if(p.arte&&ARTE_PROYECTILES[p.arte]&&ARTE_PROYECTILES[p.arte].impacto)impactosPNG.push({x:ix,y:iy,t0:performance.now(),e:ARTE_PROYECTILES[p.arte].impacto,ang:p._ang||0});
         if(!(t===hero&&hero.isInvulnerable)){const dmg=Math.max(1,p.damage-(t.armor||0));t.hp-=dmg;addHitFlash(t);spawnHitSparks(ix,iy,dmg>=25);if(t.type!=="structure")spawnDamageText(t.x,t.y-20,dmg,t===hero);if(t.hp<=0)creditKill(p.owner,t);}
       }
       projectiles.splice(i,1);
@@ -7584,7 +7624,13 @@ function update(dt){
   }
 
   // player towers
-  for(let str of structures)if(!str.isUnderConstruction&&str.type==="tower"&&str.team==="player")for(let en of enemies){if(Math.hypot((str.x+20)-en.x,(str.y+20)-en.y)<200){en.hp-=(0.25+techTowerDmg);addHitFlash(en);break;}}
+  // torretas tuyas: disparan un rayo de plasma cada TORRE_CADENCIA cuadros (mismo daño por segundo que antes)
+  for(let str of structures)if(!str.isUnderConstruction&&str.type==="tower"&&str.team==="player"){
+    if((str._cd=(str._cd||0)-1)>0)continue;
+    const cx=str.x+str.size/2,cy=str.y+str.size/2;
+    const tgt=enemies.find(en=>en.hp>0&&Math.hypot(cx-en.x,cy-en.y)<200);
+    if(tgt){dispararTorre(str,tgt,(0.25+techTowerDmg)*TORRE_CADENCIA,"torre","#66ccff");str._cd=TORRE_CADENCIA;}
+  }
 
   // deaths
   for(let i=enemies.length-1;i>=0;i--){
@@ -7644,11 +7690,52 @@ function adjustColor(hex,a){if(!hex||hex[0]!=='#')return hex;let r=parseInt(hex.
 // Dibuja el PNG del edificio (ARTE_ESTRUCTURAS) apoyado sobre su huella.
 // Devuelve false si no hay dibujo cargado (entonces se usa la forma de siempre).
 function drawStructureSprite(str,p){
-  const fr=sceneryFrame(ARTE_ESTRUCTURAS[str.type+(str.team==="enemy"?"_enemigo":"")]);
+  const fr=frameEstructura(str);
   if(!fr)return false;
-  // la esquina de abajo de la huella isométrica queda a size*ISO_KY bajo el centro
-  drawAnimFrame(fr,p.x,p.y+str.size*ISO_KY+(fr.offY||0),fr.drawW||str.size*1.45,1);
+  const L=colocarEstructura(str,p,fr);
+  drawAnimFrame(fr,p.x,L.base,L.W,1);
   return true;
+}
+// ── Edificios con estados ── {quieto, entrenando, abriendo, abierta}
+// entrenando: la puerta se abre un momento cada vez que sale una tropa.
+// abriendo/abierta (la Cámara): se abre cuando revive al héroe y queda abierta; al
+// empezar a revivir otra vez se cierra (la apertura al revés) y vuelve a "quieto".
+function frameEstructura(str){
+  const e=ARTE_ESTRUCTURAS[str.type+(str.team==="enemy"?"_enemigo":"")];
+  if(!e||typeof e==="string"||e.sheet||!e.quieto)return sceneryFrame(e);
+  const ahora=performance.now(),cola=str.queue||[];
+  if(e.entrenando){
+    if(str._colaPrev!=null&&cola.length<str._colaPrev)str._puertaHasta=ahora+1400;
+    str._colaPrev=cola.length;
+    const fr=sceneryFrame(ahora<(str._puertaHasta||0)?e.entrenando:e.quieto);
+    if(fr)fr.ref=e.quieto;return fr;
+  }
+  if(e.abriendo){
+    const revive=cola.some(q=>q.name==="Héroe");
+    if(str._revivia&&!revive)str._anim={t0:ahora,reves:false,fin:"abierta"};            // salió el héroe: se abre
+    if(revive&&!str._revivia&&str._fijo==="abierta")str._anim={t0:ahora,reves:true,fin:"quieto"};   // empieza a revivir: se cierra
+    str._revivia=revive;
+    if(str._anim){
+      const c=e.abriendo,n=c.count||1,i=Math.floor((ahora-str._anim.t0)/1000*(c.fps||10)*VELOCIDAD_ANIMACION);
+      if(i>=n){str._fijo=str._anim.fin;str._anim=null;}
+      else{const fr=sceneryFrame({...c,cuadro:str._anim.reves?n-1-i:i});if(fr){fr.ref=e.quieto;fr.clip=c;}return fr;}
+    }
+    const fr=sceneryFrame(str._fijo==="abierta"?e.abierta:e.quieto);
+    if(fr)fr.ref=e.quieto;return fr;
+  }
+  return sceneryFrame(e.quieto);
+}
+// Dónde y de qué tamaño va el dibujo: con drawW/offY como siempre; sin ellos se calcula solo
+// (el dibujo ocupa el ancho del rombo de la huella y su borde de abajo apoya en la esquina de adelante).
+function colocarEstructura(str,p,fr){
+  const esquina=p.y+str.size*ISO_KY,e=ARTE_ESTRUCTURAS[str.type+(str.team==="enemy"?"_enemigo":"")]||{};
+  if(fr.drawW!=null||fr.offY)return {W:fr.drawW||str.size*1.45,base:esquina+(fr.offY||0)};
+  const ref=fr.ref||fr.clip,lim=ref&&limitesClip(ref,fr.img);
+  if(!lim)return {W:str.size*1.45,base:esquina};
+  // ancho = el del rombo de la huella, pero sin pasar de 1,7 veces su tamaño de alto (torres finitas y altas)
+  const escala=(typeof e==="object"&&e.escala)||1;
+  const k=Math.min(2*str.size*ISO_KX*escala/Math.max(1,lim.der-lim.izq),str.size*1.7*escala/Math.max(1,lim.pies-lim.arriba)),W=fr.sw*k;
+  return {W,base:esquina+(fr.sh-lim.pies)*(W/fr.sw)+((typeof e==="object"&&e.ajusteY)||0)};
 }
 // ── Ruinas: explosión al destruirse un edificio y cráter que se borra de a poco ──
 const ruinas=[]; // {x,y,size,t0,semilla}
@@ -7706,16 +7793,30 @@ function dibujarExplosiones(){
     ctx.globalAlpha=1;
   }
 }
+// Impactos con dibujo: quedan un instante donde pegó el proyectil y se desvanecen
+const impactosPNG=[];
+function dibujarImpactosPNG(){
+  const ahora=performance.now();
+  for(let i=impactosPNG.length-1;i>=0;i--){
+    const m=impactosPNG[i],t=(ahora-m.t0)/280;if(t>=1){impactosPNG.splice(i,1);continue;}
+    const fr=sceneryFrame(m.e);if(!fr)continue;const sp=worldToIso(m.x,m.y);
+    ctx.save();ctx.globalAlpha=1-t*t;ctx.translate(sp.x,sp.y-14);ctx.rotate(m.ang);
+    drawAnimFrame({...fr,offX:0},0,0,(fr.drawW||m.e.drawW||24)*(1+t*0.3),0.5);ctx.restore();
+  }
+}
 // Proyectil con dibujo (ARTE_PROYECTILES según quién disparó). Devuelve false si no tiene.
 function dibujarProyectilPNG(p,sp){
-  const key=p.owner&&(p.owner.animKey||p.owner.spriteKey);
+  const key=p.arte||(p.owner&&(p.owner.animKey||p.owner.spriteKey));
   const e=key&&ARTE_PROYECTILES[key];if(!e)return false;
   const fr=sceneryFrame(e);if(!fr)return false;
   const t=p.target,tx=t?(t.size!=null&&t.radius==null?t.x+t.size/2:t.x):p.x,ty=t?(t.size!=null&&t.radius==null?t.y+t.size/2:t.y):p.y;
   const ts=worldToIso(tx,ty);
-  const ang=Math.atan2(ts.y-sp.y,ts.x-sp.x)+Math.PI/2;   // el PNG apunta hacia arriba
+  // los de torreta salen de lo alto y van bajando hasta la altura del pecho del blanco
+  const alto=p.alto0?14+(p.alto0-14)*Math.min(1,Math.hypot(tx-p.x,ty-p.y)/p.d0):14;
+  const ang=Math.atan2(ts.y-14-(sp.y-alto),ts.x-sp.x)+Math.PI/2;   // el PNG apunta hacia arriba
+  p._ang=ang;
   const w=fr.drawW||24;
-  ctx.save();ctx.translate(sp.x,sp.y-14);   // a la altura del pecho, no en el piso
+  ctx.save();ctx.translate(sp.x,sp.y-alto);
   if(typeof e==="object"&&e.girar)ctx.rotate(ang);
   drawAnimFrame({...fr,offX:0},0,0,w,0.5);
   ctx.restore();
@@ -7740,10 +7841,10 @@ function cajaVisible(fr){ // filas con dibujo dentro del cuadro (0..1); si no se
 // Dibuja el edificio en obra mostrando solo su parte de abajo: 1/3, 2/3 y 3/3 según el avance.
 function dibujarEdificioPorEtapas(str,p,ox,oy,fc){
   const n=CONSTRUCCION_ETAPAS,etapa=Math.min(n,Math.floor((str.progress||0)/100*n)+1),f=etapa/n;
-  const fr=sceneryFrame(ARTE_ESTRUCTURAS[str.type+(str.team==="enemy"?"_enemigo":"")]);
+  const fr=frameEstructura(str);
   let abajo,alto;
   if(fr){
-    const W=fr.drawW||str.size*1.45,H=W*fr.sh/fr.sw,base=p.y+str.size*ISO_KY+(fr.offY||0),cj=cajaVisible(fr);
+    const L=colocarEstructura(str,p,fr),W=L.W,H=W*fr.sh/fr.sw,base=L.base,cj=cajaVisible(fr);
     abajo=base-H+H*cj.y1;alto=H*(cj.y1-cj.y0);
   }else{abajo=oy+str.size;alto=str.size+14;}
   ctx.save();ctx.beginPath();ctx.rect(p.x-str.size*3,abajo-alto*f,str.size*6,alto*f+str.size*2);ctx.clip();
@@ -8148,6 +8249,7 @@ function draw(){
   drawCorpseMarkers();
 
   // proyectiles
+  dibujarImpactosPNG();
   for(let p of projectiles){const sp=worldToIso(p.x,p.y);if(dibujarProyectilPNG(p,sp))continue;ctx.fillStyle=p.color;ctx.shadowBlur=6;ctx.shadowColor=p.color;ctx.beginPath();ctx.arc(sp.x,sp.y,3,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}
 
   // de noche todo se tiñe de azul oscuro (multiplicar: los colores se oscurecen sin lavarse)
