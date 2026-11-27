@@ -469,7 +469,8 @@ body.cursor-juego :is(#map-wrapper,#top-bar,#hero-icon,#control-group-bar,#idle-
    Los botones quedan DETRÁS de tu dibujo: se ven por el hueco y el borde del HUD los tapa. */
 #hud-dibujo>.hd-hueco{z-index:0;} #hud-dibujo>.hd-bloqueo{z-index:1;} #hud-dibujo>#hud-commands{z-index:2;}
 #hud-dibujo>.hd-imagen{z-index:3;} #hud-dibujo>.hd-zona,#hud-dibujo>#hud-inventory{z-index:4;}
-#hud-dibujo>.hd-zona.hd-retrato{z-index:2;}   /* el retrato va DETRÁS del panel: el marco del HUD lo encuadra */
+#hud-dibujo>.hd-zona.hd-retrato{z-index:2;}
+.retrato-estatica{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;image-rendering:pixelated;opacity:0;mix-blend-mode:normal;}   /* el retrato va DETRÁS del panel: el marco del HUD lo encuadra */
 #hud-dibujo .command-btn.autocast::after{inset:1px;}
 #hud-dibujo .hd-hueco{background:radial-gradient(ellipse at 50% 35%,#16283a,#070d16);border-radius:22%;}
 #hud-dibujo .hd-imagen,.retrato-tira,#unit-portrait-icon img,.btn-icon img,.inv-slot img{image-rendering:pixelated;}
@@ -840,11 +841,12 @@ body.sin-teclas .btn-hotkey{display:none!important;}
 // (se ajusta solo: abierto desde la carpeta "juego" busca en ../arte/; publicado como
 //  página web, con las carpetas al lado de la página, busca en arte/)
 const _enCarpetaJuego=/\/juego\/[^\/]*$/i.test(decodeURI(location.pathname));
-const RUTA_ARTE=_enCarpetaJuego?"../arte/":"arte/", RUTA_MUSICA=_enCarpetaJuego?"../musica/":"musica/";
+const RUTA_ARTE=_enCarpetaJuego?"../arte/":"arte/", RUTA_MUSICA=_enCarpetaJuego?"../musica/":"musica/", RUTA_SONIDOS=_enCarpetaJuego?"../sonidos/":"sonidos/";
 // (si escribes una ruta propia con "/" o una dirección web, se usa tal cual)
 function rutaCon(base,f){return (!f||/^(data:|blob:|https?:|file:)/.test(f)||f.includes("/"))?f:base+f;}
 function rutaArte(f){return rutaCon(RUTA_ARTE,f);}
 function rutaMusica(f){return rutaCon(RUTA_MUSICA,f);}
+function rutaSonido(f){return rutaCon(RUTA_SONIDOS,f);}
 // Si una casilla queda vacía "" o el archivo no carga, el juego dibuja una
 // figura de reemplazo: nunca se rompe nada.
 //
@@ -1139,10 +1141,17 @@ const ARTE_RETRATOS={
 // Nunca suenan dos a la vez. Deja "" lo que no tengas.
 const MUSICA={
   menu:     "",                   // en la pantalla de inicio (empieza con el primer clic, el navegador no deja antes)
-  inicio:   "sountrack.mp3",      // al empezar la partida, siempre
-  partida:  ["sountrack.mp3"],    // las que van saliendo durante la partida (puedes poner varias: ["tema1.mp3","tema2.mp3"])
+  inicio:   "banda_sonora.mp3",   // al empezar la partida, siempre
+  partida:  ["banda_sonora.mp3"],    // las que van saliendo durante la partida (puedes poner varias: ["tema1.mp3","tema2.mp3"])
   victoria: "",                   // al ganar
   derrota:  "",                   // al perder
+};
+// ── EFECTOS DE SONIDO ── (archivos en la carpeta "sonidos"; deja "" para usar el pitido de siempre)
+const SONIDOS={
+  clic:     {archivo:"clic.mp3",     vol:0.55}, // cada vez que haces clic (botones, mapa, órdenes)
+  estatica: {archivo:"estatica.mp3", vol:0.45}, // el retrato cambia de unidad (estática de TV)
+  reparar:  {archivo:"reparar.mp3",  vol:0.40}, // un obrero reparando (solo si se ve en pantalla)
+  compra:   {archivo:"compra.mp3",   vol:0.70}, // compras un objeto en la tienda
 };
 const MUSICA_SILENCIO_MIN=40, MUSICA_SILENCIO_MAX=110; // segundos de silencio entre una canción y la siguiente
 
@@ -1408,6 +1417,27 @@ function playTone(freq,dur,type='square',vol=0.06){playToneBase(freq,dur,type,vo
 function playChord(freqs,dur){freqs.forEach((f,i)=>setTimeout(()=>playTone(f,dur,'sine',0.04),i*60));}
 function setMusicVol(v){musicVol=v/100;if(typeof musicaEl!=="undefined"&&musicaEl)musicaEl.volume=volMusica();if(menuGain)menuGain.gain.value=musicVol*0.3;if(gameGainNode)gameGainNode.gain.value=musicVol*0.2;}
 function setSfxVol(v){sfxVol=v/100;}
+// ── efectos de sonido de archivo (Web Audio: se pueden pisar entre sí sin cortarse) ──
+const _bufSonido={},_ultimoSonido={};
+function cargarSonido(n){
+  const d=SONIDOS[n];if(!d||!d.archivo||_bufSonido[n]!==undefined)return;
+  _bufSonido[n]=null;
+  try{fetch(rutaSonido(d.archivo)).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
+    .then(b=>new Promise((ok,mal)=>{const p=actx.decodeAudioData(b,ok,mal);if(p&&p.catch)p.catch(mal);}))
+    .then(buf=>{_bufSonido[n]=buf;}).catch(()=>{_bufSonido[n]=false;});}catch(e){_bufSonido[n]=false;}
+}
+// sonarEfecto("clic") · devuelve false si el archivo no está (para usar el pitido de reserva)
+function sonarEfecto(n,vol=1,minMs=0){
+  const d=SONIDOS[n],buf=_bufSonido[n];
+  if(!d||!buf)return false;
+  if(actx.state==='suspended')return true;
+  const ahora=performance.now();if(minMs&&ahora-(_ultimoSonido[n]||0)<minMs)return true;_ultimoSonido[n]=ahora;
+  try{const src=actx.createBufferSource(),g=actx.createGain();src.buffer=buf;g.gain.value=(d.vol||1)*vol*sfxVol;src.connect(g);g.connect(actx.destination);src.start();}catch(e){}
+  return true;
+}
+Object.keys(SONIDOS).forEach(cargarSonido);
+// clic: suena en cualquier clic (menos durante la intro del estudio)
+document.addEventListener("pointerdown",()=>{if(!document.body.classList.contains("en-intro"))sonarEfecto("clic",1,35);},true);
 function stopMenuMusic(){if(menuGain){menuGain.gain.linearRampToValueAtTime(0,actx.currentTime+0.5);setTimeout(()=>{menuGain=null;},600);}}
 function makeGameMusic(){}
 // ═══════════════ MÚSICA (reproductor) ═══════════════
@@ -3369,13 +3399,41 @@ function setPortrait(unit){
   const name=unit.name||"";
   const html=retratoHTML(name,true);
   if(html){
-    if(unitPortraitIconEl.dataset.retrato!==name){unitPortraitIconEl.innerHTML=html;unitPortraitIconEl.dataset.retrato=name;} // no reiniciar la animación en cada repintado
+    if(unitPortraitIconEl.dataset.retrato!==name){unitPortraitIconEl.innerHTML=html;unitPortraitIconEl.dataset.retrato=name;estaticaRetrato();} // no reiniciar la animación en cada repintado
     return;
   } else {
-    unitPortraitIconEl.dataset.retrato="";
+    const cambio=unitPortraitIconEl.dataset.retrato!=="ico:"+name;
+    unitPortraitIconEl.dataset.retrato="ico:"+name;
     const ico=PORTRAITS[name]||(unit.team==="enemy"?"👹":"❓");
     unitPortraitIconEl.innerHTML=`<span style="position:relative;z-index:2;">${ico}</span>`;
+    if(cambio)estaticaRetrato();
   }
+}
+// ── estática de TV al cambiar de retrato ──
+// Un canvas chiquito con ruido que se dibuja encima del retrato ~0.35 s y se desvanece.
+let _estatica=null;
+function estaticaRetrato(){
+  sonarEfecto("estatica",1,120);
+  let cv=_estatica&&_estatica.cv;
+  if(!cv||!cv.isConnected){
+    cv=document.createElement("canvas");cv.width=48;cv.height=40;cv.className="retrato-estatica";
+    unitPortraitIconEl.parentNode.appendChild(cv);
+  }
+  if(_estatica&&_estatica.raf)cancelAnimationFrame(_estatica.raf);
+  const ctx2=cv.getContext&&cv.getContext("2d");if(!ctx2)return;
+  const img=ctx2.createImageData(cv.width,cv.height),t0=performance.now(),DUR=380;
+  _estatica={cv,raf:0};
+  const paso=()=>{
+    const t=(performance.now()-t0)/DUR;
+    if(t>=1){cv.style.opacity="0";_estatica.raf=0;return;}
+    const px=img.data;
+    for(let y=0;y<cv.height;y++){const banda=Math.random()<0.08?60:0;
+      for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,v=Math.min(255,(Math.random()*230|0)+banda);px[i]=v;px[i+1]=v;px[i+2]=v+10;px[i+3]=255;}}
+    ctx2.putImageData(img,0,0);
+    cv.style.opacity=String(t<0.55?0.95:0.95*(1-(t-0.55)/0.45));
+    _estatica.raf=requestAnimationFrame(paso);
+  };
+  paso();
 }
 
 const cmdMove=document.getElementById("cmd-move");
@@ -4888,7 +4946,7 @@ function comprarObjeto(id){
   const o=OBJETOS[id],m=motivoNoCompra(id);
   if(m){triggerAlert(m,"#ff9966",200);return;}
   if(!darObjeto(hero,id)){triggerAlert("🎒 Inventario lleno","#ff9966",200);return;}
-  gold-=o.precio;playTone(784,0.12,'sine',0.05);
+  gold-=o.precio;if(!sonarEfecto("compra"))playTone(784,0.12,'sine',0.05);
   triggerAlert(`${o.icono} Compraste ${o.nombre}`,"#78dcff",300);
   refrescarTienda();
 }
@@ -7044,6 +7102,7 @@ function update(dt){
           gold-=paga;w._deudaRep-=paga;}
         t.hp=Math.min(t.maxHp,t.hp+vida);
         if(frameMov%24===0)spawnHitSparks(t.x+t.size/2+(Math.random()-0.5)*t.size*0.5,t.y+t.size/2,false);
+        if(frameMov%20===0){const ps=worldToIso(t.x+t.size/2,t.y+t.size/2);if(enVistaIso(ps.x,ps.y,80))sonarEfecto("reparar",1,1700);}
       }
     }
     else if(w.state==="goto_build"){let t=w.targetBuild;if(!t||!structures.includes(t)||!t.isUnderConstruction){advanceQueue(w);continue;}if(distA(w,t)>ALCANCE_ENTREGA)irHacia(w,t.x+t.size/2,t.y+t.size/2,2);else{w.state="building";detener(w);entrarEnObra(w,t);}}
