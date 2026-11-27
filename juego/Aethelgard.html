@@ -1141,7 +1141,7 @@ const ARTE_RETRATOS={
 // después hay un rato de silencio y vuelve a sonar una de la lista "partida" al azar.
 // Nunca suenan dos a la vez. Deja "" lo que no tengas.
 const MUSICA={
-  menu:     "tema_titulo.mp3",    // título y menú: empieza cuando las estrellas forman el logo y queda en bucle hasta jugar
+  menu:     "tema_titulo.mp3",    // título y menú: empieza cuando las estrellas forman el logo (suena una sola vez)
   inicio:   "banda_sonora.mp3",   // al empezar la partida, siempre
   partida:  ["banda_sonora.mp3","banda_sonora_2.mp3"],  // las que van saliendo durante la partida: se turnan, nunca la misma dos veces seguidas
   victoria: "",                   // al ganar
@@ -1154,6 +1154,7 @@ const SONIDOS={
   reparar:  {archivo:"reparar.mp3",  vol:0.40}, // un obrero reparando (solo si se ve en pantalla)
   compra:   {archivo:"compra.mp3",   vol:0.70}, // compras un objeto en la tienda
 };
+const MUSICA_MENU_REPETIR=false;   // true = el tema del menú vuelve a empezar al terminar
 const MUSICA_SILENCIO_MIN=40, MUSICA_SILENCIO_MAX=110; // segundos de silencio entre una canción y la siguiente
 
 // ── TEXTOS DEL MENÚ PRINCIPAL ── (cámbialos por los tuyos)
@@ -1485,7 +1486,7 @@ function musicaInicioPartida(){
 function stopGameMusic(){musicaActiva=false;clearTimeout(musicaTimer);musicaTimer=null;if(musicaEl){fundirYParar(musicaEl);musicaEl=null;}}
 function musicaFinal(victoria){stopGameMusic();const src=victoria?MUSICA.victoria:MUSICA.derrota;if(src)tocarCancion(src);}
 // Música del menú: con el primer clic en la pantalla de inicio (en bucle hasta empezar la partida)
-document.addEventListener("pointerdown",()=>{if(MUSICA.menu&&!musicaActiva&&!musicaEl&&document.getElementById("splash").style.display!=="none")tocarCancion(MUSICA.menu,{bucle:true});},{once:true});
+document.addEventListener("pointerdown",()=>{if(MUSICA.menu&&!musicaActiva&&!musicaEl&&document.getElementById("splash").style.display!=="none")tocarCancion(MUSICA.menu,{bucle:MUSICA_MENU_REPETIR});},{once:true});
 // compatibilidad con el código viejo
 function startCustomMusic(){}
 
@@ -1994,7 +1995,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   };
   // al volver al menú desde una partida no se repite (solo al abrir el juego)
   let saltar=false;try{saltar=sessionStorage.getItem("aeth_saltar_intro")==="1";sessionStorage.removeItem("aeth_saltar_intro");}catch(e){}
-  if(saltar){capa.remove();document.body.classList.remove("en-intro");window._decoMenu=true;tocarCancion(MUSICA.menu,{bucle:true});return;}
+  if(saltar){capa.remove();document.body.classList.remove("en-intro");window._decoMenu=true;tocarCancion(MUSICA.menu,{bucle:MUSICA_MENU_REPETIR});return;}
   const negro=document.getElementById("intro-negro"),est=document.getElementById("intro-estudio"),tit=document.getElementById("intro-titulo");
   let fase="espera",timers=[];
   const luego=(f,ms)=>timers.push(setTimeout(f,ms));
@@ -2009,7 +2010,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   };
   // el tema del título suena desde que sale el logo, y las cosas del fondo empiezan a cruzar
   let temaSonando=false;
-  const salioElLogo=()=>{if(!temaSonando){temaSonando=true;if(MUSICA.menu)tocarCancion(MUSICA.menu,{bucle:true});}window._decoMenu=true;};
+  const salioElLogo=()=>{if(!temaSonando){temaSonando=true;if(MUSICA.menu)tocarCancion(MUSICA.menu,{bucle:MUSICA_MENU_REPETIR});}window._decoMenu=true;};
   const aTitulo=(logoListo)=>{
     if(fase!=="estudio"&&fase!=="cielo")return;fase="titulo";timers.forEach(clearTimeout);cieloActivo=false;
     est.classList.remove("ver");negro.classList.add("fuera");salioElLogo();
