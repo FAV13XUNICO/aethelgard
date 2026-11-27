@@ -3513,6 +3513,12 @@ const METAL_SEGUNDOS_POR_UNIDAD=0.9;   // cuánto tarda en picar 1 de metal (10 
 const METAL_CARGA_INICIAL=10;          // cuánto lleva por viaje al empezar
 const METAL_CARGA_MEJORADA=20;         // con "Compresión de Carga" (Extractor de Energía)
 let cargaMetal=METAL_CARGA_INICIAL;
+const METAL_POR_ROCA=120;              // cuánto metal rinde cada roca antes de agotarse (antes 50)
+// ── TIEMPO DE CONSTRUCCIÓN ── segundos que tarda UN obrero en levantar cada edificio
+// (con más obreros ayudando va más rápido; el Arquitecto construye 1.5 veces más rápido)
+const OBRA_SEGUNDOS={base:45,barracks:25,altar:25,sawmill:20,forge:25,tower:16,farm:14,sanctuary:28};
+// el tiempo sale también en el cuadrito de cada botón de construir
+for(const [tipo,seg] of Object.entries(OBRA_SEGUNDOS)){const t=document.querySelector(`#cmd-b-${tipo} .btn-tooltip`);if(t)t.insertAdjacentHTML("beforeend",` · ⏱ ${seg} s`);}
 
 // ═══════════════ OBREROS CON NOMBRE ═══════════════
 // Cada Dron Constructor nace con un nombre propio. Si trabaja bien (o sobrevive a algo
@@ -4176,6 +4182,12 @@ const terrenoFijo=new Uint8Array(PW*PH);
 for(let py=0;py<PH;py++)for(let px=0;px<PW;px++){
   const cx=px*PC+PC/2,cy=py*PC+PC/2;
   terrenoFijo[py*PW+px]=isWalkable(cx,cy)?0:1;
+}
+// Debajo de cada roca el suelo queda libre: al picar la de adelante se abre el
+// hueco y los obreros pueden entrar a picar las del fondo (como los árboles en WC3).
+for(const t of trees){
+  const px=Math.floor(t.x/PC),py=Math.floor(t.y/PC);
+  for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)if(px+dx<PW&&py+dy<PH)terrenoFijo[(py+dy)*PW+px+dx]=0;
 }
 
 function rebuildCollisionGrid(){
@@ -6007,7 +6019,7 @@ function picarMetalIA(w){
     if(irHacia(w,tx,ty,1.6)&&!w._paso){w.targetTree._inalcanzable=frameMov;w.targetTree=null;}
   } else {
     mirarHacia(w,{x:tx,y:ty});w.chopProgress+=100/(METAL_SEGUNDOS_POR_UNIDAD*60);
-    if(w.chopProgress>=100){w.chopProgress=0.01;w.carrying=Math.min(AI_CARGA_METAL,(w.carrying||0)+1);w.targetTree.hp-=100/50;if(w.carrying>=AI_CARGA_METAL){w.chopProgress=0;detener(w);}}
+    if(w.chopProgress>=100){w.chopProgress=0.01;w.carrying=Math.min(AI_CARGA_METAL,(w.carrying||0)+1);w.targetTree.hp-=100/METAL_POR_ROCA;if(w.carrying>=AI_CARGA_METAL){w.chopProgress=0;detener(w);}}
   }
 }
 // ── EXPLORADOR: al principio un ingeniero va a ver tu base (como en WC3) y vuelve a minar ──
@@ -7106,7 +7118,7 @@ function update(dt){
       }
     }
     else if(w.state==="goto_build"){let t=w.targetBuild;if(!t||!structures.includes(t)||!t.isUnderConstruction){advanceQueue(w);continue;}if(distA(w,t)>ALCANCE_ENTREGA)irHacia(w,t.x+t.size/2,t.y+t.size/2,2);else{w.state="building";detener(w);entrarEnObra(w,t);}}
-    else if(w.state==="building"){let t=w.targetBuild;if(!t||!structures.includes(t)||!t.isUnderConstruction){advanceQueue(w);continue;}t.progress+=0.4*(w.apodo==="arquitecto"?1.5:1);t.hp=Math.min(t.maxHp,(t.progress/100)*t.maxHp);if(t.progress>=100){t.isUnderConstruction=false;t.hp=t.maxHp;t.trainingProgress=0;w.targetBuild=null;w.obras=(w.obras||0)+1;revisarApodos(w);collisionGridDirty=true;if(t.type==="farm"){maxPopulation+=8;triggerAlert("🌾 Generador de Soporte Vital: +8 Pop","#00a2ff",440);pingMapa(t.x+t.size/2,t.y+t.size/2,"mejora",t);}else triggerAlert(`🏗️ ${t.name} completa`,"#00a2ff",440);pingMapa(t.x+t.size/2,t.y+t.size/2,"mejora",t);advanceQueue(w);updateBottomUI();}}
+    else if(w.state==="building"){let t=w.targetBuild;if(!t||!structures.includes(t)||!t.isUnderConstruction){advanceQueue(w);continue;}t.progress+=100/((OBRA_SEGUNDOS[t.type]||20)*60)*(w.apodo==="arquitecto"?1.5:1);t.hp=Math.min(t.maxHp,(t.progress/100)*t.maxHp);if(t.progress>=100){t.isUnderConstruction=false;t.hp=t.maxHp;t.trainingProgress=0;w.targetBuild=null;w.obras=(w.obras||0)+1;revisarApodos(w);collisionGridDirty=true;if(t.type==="farm"){maxPopulation+=8;triggerAlert("🌾 Generador de Soporte Vital: +8 Pop","#00a2ff",440);pingMapa(t.x+t.size/2,t.y+t.size/2,"mejora",t);}else triggerAlert(`🏗️ ${t.name} completa`,"#00a2ff",440);pingMapa(t.x+t.size/2,t.y+t.size/2,"mejora",t);advanceQueue(w);updateBottomUI();}}
     else {
       // mine states
       const mineIdx=mines.findIndex((m,i)=>mineState(i)===w.state);
@@ -7129,7 +7141,7 @@ function update(dt){
           } else {
             mirarHacia(w,{x:tx,y:ty});w.chopProgress+=100/(METAL_SEGUNDOS_POR_UNIDAD*60);
             if(w.chopProgress>=100){ // un golpe más: +1 de metal
-              w.chopProgress=0.01;w.carrying=Math.min(cargaMetal,(w.carrying||0)+1);w.targetTree.hp-=100/50; // cada roca rinde 50 de metal
+              w.chopProgress=0.01;w.carrying=Math.min(cargaMetal,(w.carrying||0)+1);w.targetTree.hp-=100/METAL_POR_ROCA; // cada roca rinde METAL_POR_ROCA de metal
               if(w.carrying>=cargaMetal){w.chopProgress=0;detener(w);}
             }
           }
