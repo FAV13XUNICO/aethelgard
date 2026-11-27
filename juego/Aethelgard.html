@@ -4524,6 +4524,23 @@ function terminarPasos(){
 // Distancia de una unidad a un objetivo: al borde si es un edificio, al centro si es una unidad.
 function distRect(u,x,y,w,h){const cx=Math.max(x,Math.min(u.x,x+w)),cy=Math.max(y,Math.min(u.y,y+h));return Math.hypot(u.x-cx,u.y-cy);}
 function distA(u,t){return (t.size!=null&&t.radius==null)?distRect(u,t.x,t.y,t.size,t.size):Math.hypot(u.x-t.x,u.y-t.y);}
+// Punto de llegada a un edificio: el lado MÁS CERCANO a la unidad (no el centro).
+// Antes todos iban al centro, y el punto libre "más cerca del centro" siempre
+// caía del mismo lado, así que los obreros daban la vuelta al edificio para
+// entregar. Se guarda un ratito para que la ruta no se recalcule a cada paso.
+function puntoDeLlegada(u,t){
+  const c=u._llegada;
+  if(c&&c.t===t&&frameMov-c.f<90)return c;
+  const M=30,x=Math.max(t.x-M,Math.min(t.x+t.size+M,u.x)),y=Math.max(t.y-M,Math.min(t.y+t.size+M,u.y));
+  // si la unidad está "dentro" del margen, empuja el punto hacia afuera del lado más cercano
+  let px=x,py=y;
+  if(x>t.x-M&&x<t.x+t.size+M&&y>t.y-M&&y<t.y+t.size+M){
+    const dl=x-(t.x-M),dr=t.x+t.size+M-x,dt=y-(t.y-M),db=t.y+t.size+M-y,m=Math.min(dl,dr,dt,db);
+    if(m===dl)px=t.x-M;else if(m===dr)px=t.x+t.size+M;else if(m===dt)py=t.y-M;else py=t.y+t.size+M;
+  }
+  return u._llegada={t,f:frameMov,x:px,y:py};
+}
+function irAlEdificio(u,t,vel){const p=puntoDeLlegada(u,t);return irHacia(u,p.x,p.y,vel);}
 
 // Orden de mover (clic derecho): fija el destino y avisa si no hay camino.
 function setUnitDestination(u,goalX,goalY){
@@ -5906,7 +5923,7 @@ function recolectarMina(w,m,base,carga,vel,depositar){
   if(w.carrying>0&&w._cargaTipo==="metal"){w.carrying=0;w._cargaTipo=null;} // traía metal y lo mandaste a la mina: lo suelta (no se convierte en cristal)
   if(w.carrying>0){                              // lleva cristal: a la base
     if(!base)return;
-    if(distA(w,base)>ALCANCE_ENTREGA)irHacia(w,base.x+base.size/2,base.y+base.size/2,vel);
+    if(distA(w,base)>ALCANCE_ENTREGA)irAlEdificio(w,base,vel);
     else{depositar(w.carrying);w.carrying=0;detener(w);}
     return;
   }
@@ -6009,7 +6026,7 @@ function processAIWorkers(){
     } else if(w.state==="goto_build_ai"){
       if(!w.targetBuild||!structures.includes(w.targetBuild)){w.state="mine";continue;}
       const s=w.targetBuild;
-      if(distA(w,s)>ALCANCE_ENTREGA)irHacia(w,s.x+s.size/2,s.y+s.size/2,1.6);else{w.state="building_ai";detener(w);s._sinEmpezar=false;}
+      if(distA(w,s)>ALCANCE_ENTREGA)irAlEdificio(w,s,1.6);else{w.state="building_ai";detener(w);s._sinEmpezar=false;}
     } else if(w.state==="building_ai"){
       let s=w.targetBuild;
       if(!s||!structures.includes(s)||!s.isUnderConstruction){w.state="mine";w.targetBuild=null;continue;}
@@ -6048,7 +6065,7 @@ function picarMetalIA(w){
   const base=findNearestAIBase(w);
   if(!base){w.state="mine";return;}
   if(w.carrying>=AI_CARGA_METAL){
-    if(distA(w,base)>ALCANCE_ENTREGA)irHacia(w,base.x+base.size/2,base.y+base.size/2,1.6);
+    if(distA(w,base)>ALCANCE_ENTREGA)irAlEdificio(w,base,1.6);
     else{const k=(IA_INGRESO[selectedDifficulty]||1)*nivelMantenimiento(aiPop).factor;aiLumber+=Math.round(w.carrying*k);w.carrying=0;detener(w);}
     return;
   }
@@ -7150,7 +7167,7 @@ function update(dt){
     else if(w.state==="goto_repair"||w.state==="repairing"){
       const t=w.targetBuild;
       if(!puedeRepararse(t)){w.targetBuild=null;advanceQueue(w);if(t&&t.hp>=t.maxHp&&selectedUnits.includes(w))updateBottomUI();continue;}
-      if(w.state==="goto_repair"){if(distA(w,t)>ALCANCE_ENTREGA)irHacia(w,t.x+t.size/2,t.y+t.size/2,2*(w._velObrero||1));else{w.state="repairing";detener(w);mirarHacia(w,{x:t.x+t.size/2,y:t.y+t.size/2});}}
+      if(w.state==="goto_repair"){if(distA(w,t)>ALCANCE_ENTREGA)irAlEdificio(w,t,2*(w._velObrero||1));else{w.state="repairing";detener(w);mirarHacia(w,{x:t.x+t.size/2,y:t.y+t.size/2});}}
       else{
         const vida=t.maxHp/(REPARAR_SEGUNDOS*60)*(w.apodo==="arquitecto"?1.5:1);
         w._deudaRep=(w._deudaRep||0)+vida*REPARAR_COSTO*costoDe(t)/t.maxHp;
@@ -7162,7 +7179,7 @@ function update(dt){
         if(frameMov%20===0){const ps=worldToIso(t.x+t.size/2,t.y+t.size/2);if(enVistaIso(ps.x,ps.y,80))sonarEfecto("reparar",1,1700);}
       }
     }
-    else if(w.state==="goto_build"){let t=w.targetBuild;if(!t||!structures.includes(t)||!t.isUnderConstruction){advanceQueue(w);continue;}if(distA(w,t)>ALCANCE_ENTREGA)irHacia(w,t.x+t.size/2,t.y+t.size/2,2);else{w.state="building";detener(w);entrarEnObra(w,t);}}
+    else if(w.state==="goto_build"){let t=w.targetBuild;if(!t||!structures.includes(t)||!t.isUnderConstruction){advanceQueue(w);continue;}if(distA(w,t)>ALCANCE_ENTREGA)irAlEdificio(w,t,2);else{w.state="building";detener(w);entrarEnObra(w,t);}}
     else if(w.state==="building"){let t=w.targetBuild;if(!t||!structures.includes(t)||!t.isUnderConstruction){advanceQueue(w);continue;}t.progress+=100/((OBRA_SEGUNDOS[t.type]||20)*60)*(w.apodo==="arquitecto"?1.5:1);t.hp=Math.min(t.maxHp,(t.progress/100)*t.maxHp);if(t.progress>=100){t.isUnderConstruction=false;t.hp=t.maxHp;t.trainingProgress=0;w.targetBuild=null;w.obras=(w.obras||0)+1;revisarApodos(w);collisionGridDirty=true;if(t.type==="farm"){maxPopulation+=8;triggerAlert("🌾 Generador de Soporte Vital: +8 Pop","#00a2ff",440);pingMapa(t.x+t.size/2,t.y+t.size/2,"mejora",t);}else triggerAlert(`🏗️ ${t.name} completa`,"#00a2ff",440);pingMapa(t.x+t.size/2,t.y+t.size/2,"mejora",t);advanceQueue(w);updateBottomUI();}}
     else {
       // mine states
@@ -7174,7 +7191,7 @@ function update(dt){
         w._cargaTipo="metal";
         let drop=findNearestLumberDrop(w);
         if(w.carrying>=cargaMetal&&drop){
-          if(distA(w,drop)>ALCANCE_ENTREGA)irHacia(w,drop.x+drop.size/2,drop.y+drop.size/2,1.8);
+          if(distA(w,drop)>ALCANCE_ENTREGA)irAlEdificio(w,drop,1.8);
           else{const extra=w.apodo==="lenador"?3:0;lumber+=w.carrying+extra;scoreLumberCollected+=w.carrying+extra;w.carrying=0;detener(w);w.viajesMadera=(w.viajesMadera||0)+1;revisarApodos(w);}
         } else {
           if(!w.targetTree||w.targetTree.hp<=0||!trees.includes(w.targetTree)){w.targetTree=findNearestTree(w);if(!w.targetTree){w.state="idle";continue;}}
