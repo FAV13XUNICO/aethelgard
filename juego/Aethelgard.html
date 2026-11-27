@@ -1155,7 +1155,8 @@ const SONIDOS={
   compra:   {archivo:"compra.mp3",   vol:0.70}, // compras un objeto en la tienda
 };
 const MUSICA_MENU_REPETIR=false;   // true = el tema del menú vuelve a empezar al terminar
-const MUSICA_MENU_TROMPETA=0.44;   // segundo del tema del menú donde entra la primera trompeta: cae justo cuando aparece el logo
+const MUSICA_MENU_TROMPETA=12.54;  // segundo del tema del menú donde entran las trompetas: la intro se estira para que
+                                   // el logo aparezca justo ahí (la música empieza con la primera estrella)
 const MUSICA_SILENCIO_MIN=40, MUSICA_SILENCIO_MAX=110; // segundos de silencio entre una canción y la siguiente
 
 // ── TEXTOS DEL MENÚ PRINCIPAL ── (cámbialos por los tuyos)
@@ -2039,7 +2040,12 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     let ini=0,mejor=Infinity;pos.forEach((e,i)=>{const d=Math.hypot(e.x-cx,e.y-cy)+e.r*60;if(d<mejor){mejor=d;ini=i;}});
     const orden=[pos[ini],...pos.filter((_,i)=>i!==ini).sort(()=>Math.random()-0.5)];
     // ── 1) las estrellas en 3 tiempos: lento → medio → rápido ──
-    const T1=INTRO.estrellas_lento*1000,T2=INTRO.estrellas_medio*1000,T3=INTRO.estrellas_rapido*1000,N=orden.length;
+    const FLASH=700,QUIETO=450;   // QUIETO: el logo de estrellas se queda armado un momento antes de aparecer
+    // los tiempos se estiran (o encogen) para que el logo salga justo cuando entran las trompetas del tema
+    const conTema=!!(temaEl&&MUSICA.menu&&MUSICA_MENU_TROMPETA>0);
+    const base=(INTRO.estrellas_lento+INTRO.estrellas_medio+INTRO.estrellas_rapido+INTRO.segundos_logo)*1000;
+    const esc=conTema?Math.max(0.5,(MUSICA_MENU_TROMPETA*1000-300-QUIETO)/base):1;
+    const T1=INTRO.estrellas_lento*1000*esc,T2=INTRO.estrellas_medio*1000*esc,T3=INTRO.estrellas_rapido*1000*esc,N=orden.length;
     const n1=Math.min(N,10),n2=Math.min(N,n1+Math.round(N*0.18));   // cuántas salen en cada tiempo
     orden.forEach((e,i)=>{
       if(i<n1)e.t=T1*Math.sqrt(i/n1);                          // lento: de a una, con calma
@@ -2071,12 +2077,22 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
         return true;
       }catch(e){return false;}
     };
-    const t0=performance.now(),D=INTRO.segundos_logo*1000,FLASH=700,QUIETO=450;   // QUIETO: el logo de estrellas se queda armado un momento
+    const t0=performance.now(),D=INTRO.segundos_logo*1000*esc;
+    sonarTema();   // la música empieza junto con la primera estrella
+    let tPrev=0,tEspera=0;
     let tLogo=-1;
     const suave=t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
     const paso=now=>{
       if(!cieloActivo)return;
-      const t=now-t0;g.clearRect(0,0,cv.width,cv.height);
+      // el reloj de la intro es la propia música (si suena): así el logo cae justo en las trompetas
+      // aunque el navegador tarde un poco en arrancar el audio o se trabe un momento
+      let t=now-t0;
+      const sync=conTema&&musicaEl===temaEl&&!temaEl.paused&&now-t0<20000;
+      if(sync&&temaEl.currentTime>0){t=temaEl.currentTime*1000;tEspera=0;}
+      else if(sync&&!tEspera)tEspera=now;
+      if(sync&&temaEl.currentTime===0&&now-tEspera<1500)t=tPrev;   // el audio todavía está cargando: espera (hasta 1,5 s)
+      t=Math.max(t,tPrev);tPrev=t;
+      g.clearRect(0,0,cv.width,cv.height);
       // mientras se arma el logo el resto del cielo se apaga un poco (y vuelve cuando aparece)
       const tl0=tLogo>=0?t-tLogo:-1,atenuar=tl0<0?1:tl0<D+QUIETO?1-0.5*Math.min(1,tl0/600):0.5+0.5*Math.min(1,(tl0-D-QUIETO)/FLASH);
       for(const e of orden){
@@ -2090,8 +2106,6 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
         const tl=t-tLogo;
         // las estrellitas viajan en curva hasta su lugar en el logo
         const R=D+QUIETO;   // el momento en que aparece el logo
-        // la música arranca un poquito antes, para que su primera trompeta caiga justo en R
-        if(tl>=R-MUSICA_MENU_TROMPETA*1000)sonarTema();
         const desv=tl>R?Math.max(0,1-(tl-R)/(FLASH*0.7)):1;
         for(const q of parts){
           const f=Math.max(0,Math.min(1,(tl-q.ret)/q.dur));if(f<=0)continue;
