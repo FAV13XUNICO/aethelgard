@@ -70,6 +70,7 @@ body.intro-entrando #vista-principal .menu-btn{opacity:0;}
 #intro-estudio .txt-comun{font:700 clamp(28px,5vw,56px) 'Cinzel',serif;color:#fff;letter-spacing:4px;}
 #intro-titulo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7vh;opacity:0;transition:opacity 1.2s ease-out;}
 #intro-titulo.ver{opacity:1;}
+#intro-titulo:not(.ver) #intro-logo img{animation:none;}   /* quieto mientras las estrellas lo arman: así coincide justo al aparecer */
 #intro-logo img{width:min(80vw,960px);image-rendering:pixelated;display:block;animation:intro-flota 4.5s ease-in-out infinite;filter:drop-shadow(0 6px 18px rgba(0,0,0,.6));}
 #intro-logo .txt-comun{font:700 clamp(40px,9vw,110px) 'Cinzel',serif;color:#cfe0f5;letter-spacing:8px;}
 #intro-presiona{animation:intro-parpadeo 1.6s ease-in-out infinite;}
@@ -1140,7 +1141,7 @@ const ARTE_RETRATOS={
 // después hay un rato de silencio y vuelve a sonar una de la lista "partida" al azar.
 // Nunca suenan dos a la vez. Deja "" lo que no tengas.
 const MUSICA={
-  menu:     "",                   // en la pantalla de inicio (empieza con el primer clic, el navegador no deja antes)
+  menu:     "tema_titulo.mp3",    // título y menú: empieza cuando las estrellas forman el logo y queda en bucle hasta jugar
   inicio:   "banda_sonora.mp3",   // al empezar la partida, siempre
   partida:  ["banda_sonora.mp3","banda_sonora_2.mp3"],  // las que van saliendo durante la partida: se turnan, nunca la misma dos veces seguidas
   victoria: "",                   // al ganar
@@ -1248,7 +1249,10 @@ ARTE_MENU.titulo="titulo_aethelgard.png";
 // ── INTRO AL ABRIR EL JUEGO (como la de Terraria): primero el estudio, después el título ──
 const INTRO={
   pausa_negro:0.8,         // segundos en negro después del logo, antes de la primera estrella
-  segundos_estrellas:3.6,  // cuánto tardan en aparecer todas las estrellas (empiezan de a una y se aceleran)
+  // las estrellas aparecen en 3 tiempos: LENTO (de a una) → MEDIO → RÁPIDO (todas las que faltan)
+  estrellas_lento:2.6, estrellas_medio:2.0, estrellas_rapido:1.4,   // segundos de cada tiempo
+  segundos_logo:2.4,       // cuánto tardan las estrellas en juntarse y formar el logo
+  estrellas_logo:1100,     // cuántas estrellitas forman el logo
   estudio:"The Ink Owl Entertainment",   // nombre del estudio (sale con tus letras grandes)
   presenta:"presenta",                  // la palabra chiquita de abajo (como "Re-Logic presents")
   buho:"",                 // PNG del búho negrito que va al lado del nombre (cuando lo tengas)
@@ -1380,7 +1384,8 @@ const ESTRELLAS_FONDO_ESTELAR="136,0,0.5,154,0,1,438,2,2.5,484,2,3,547,2,0.5,502
     sx.globalAlpha=1;
     // decoraciones
     proxima-=dt;
-    if(proxima<=0&&deco.length<7){nuevaDeco(false);proxima=2.5+Math.random()*4;}
+    // las cosas que cruzan recién salen cuando termina la intro (window._decoMenu)
+    if(window._decoMenu&&proxima<=0&&deco.length<7){nuevaDeco(false);proxima=deco.length<2?0.8+Math.random()*1.2:2.5+Math.random()*4;}
     const D=ARTE_MENU.decoraciones,n=D?(D.count||1):1,fw=imgLista(tira)?tira.naturalWidth/n:0,fh=imgLista(tira)?tira.naturalHeight:0;
     for(let i=deco.length-1;i>=0;i--){
       const o=deco[i];o.t+=dt;o.x+=o.vx*dt;o.y+=o.vy*dt;o.giro+=o.vg*dt;
@@ -1397,7 +1402,7 @@ const ESTRELLAS_FONDO_ESTELAR="136,0,0.5,154,0,1,438,2,2.5,484,2,3,547,2,0.5,502
   function arrancar(){
     prepararFondo();
     if(imgLista(img))buscarEstrellas();
-    for(let k=0;k<3;k++)nuevaDeco(true);   // ya hay un par de cosas cruzando al abrir
+    if(window._decoMenu)for(let k=0;k<3;k++)nuevaDeco(true);   // al volver de una partida ya hay un par de cosas cruzando
     requestAnimationFrame(splashLoop);
   }
   window.addEventListener('resize',()=>{if(document.getElementById('splash').style.display!=='none')prepararFondo();});
@@ -1989,7 +1994,7 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
   };
   // al volver al menú desde una partida no se repite (solo al abrir el juego)
   let saltar=false;try{saltar=sessionStorage.getItem("aeth_saltar_intro")==="1";sessionStorage.removeItem("aeth_saltar_intro");}catch(e){}
-  if(saltar){capa.remove();document.body.classList.remove("en-intro");return;}
+  if(saltar){capa.remove();document.body.classList.remove("en-intro");window._decoMenu=true;tocarCancion(MUSICA.menu,{bucle:true});return;}
   const negro=document.getElementById("intro-negro"),est=document.getElementById("intro-estudio"),tit=document.getElementById("intro-titulo");
   let fase="espera",timers=[];
   const luego=(f,ms)=>timers.push(setTimeout(f,ms));
@@ -2002,10 +2007,14 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     if(ARTE_MENU.titulo){const im=new Image();im.alt="Aethelgard";im.onload=()=>{logo.innerHTML="";logo.appendChild(im);};im.src=rutaArte(ARTE_MENU.titulo);logo.innerHTML=textoDibujado("AETHELGARD","g",3);}
     else logo.innerHTML=textoDibujado("AETHELGARD","g",3);
   };
-  const aTitulo=()=>{
+  // el tema del título suena desde que sale el logo, y las cosas del fondo empiezan a cruzar
+  let temaSonando=false;
+  const salioElLogo=()=>{if(!temaSonando){temaSonando=true;if(MUSICA.menu)tocarCancion(MUSICA.menu,{bucle:true});}window._decoMenu=true;};
+  const aTitulo=(logoListo)=>{
     if(fase!=="estudio"&&fase!=="cielo")return;fase="titulo";timers.forEach(clearTimeout);cieloActivo=false;
-    est.classList.remove("ver");negro.classList.add("fuera");
-    setTimeout(()=>tit.classList.add("ver"),500);
+    est.classList.remove("ver");negro.classList.add("fuera");salioElLogo();
+    if(logoListo===true){tit.style.transition="none";tit.classList.add("ver");requestAnimationFrame(()=>requestAnimationFrame(()=>{tit.style.transition="";}));}   // el logo ya está armado justo ahí
+    else setTimeout(()=>tit.classList.add("ver"),500);
   };
   // ── después del logo: negro un momento, una estrellita… y después cada vez más y más rápido ──
   let cieloActivo=false;
@@ -2016,25 +2025,85 @@ window.addEventListener("resize",escalaEscena);escalaEscena();
     fase="cielo";cieloActivo=true;
     const cv=document.getElementById("intro-cielo"),g=cv.getContext("2d");
     cv.width=F.cache.width;cv.height=F.cache.height;g.imageSmoothingEnabled=false;
+    const k=cv.width/Math.max(1,window.innerWidth);   // px del canvas por px de pantalla
     // primero una estrella chiquita cerca del centro; las demás en orden al azar
     const cx=cv.width/2,cy=cv.height/2,pos=L.map(e=>({x:F.offX+e[0]*F.escala,y:F.offY+e[1]*F.escala,r:e[2]*F.escala}))
       .filter(e=>e.x>-4&&e.y>-4&&e.x<cv.width+4&&e.y<cv.height+4);
     if(!pos.length){aTitulo();return;}
     let ini=0,mejor=Infinity;pos.forEach((e,i)=>{const d=Math.hypot(e.x-cx,e.y-cy)+e.r*60;if(d<mejor){mejor=d;ini=i;}});
     const orden=[pos[ini],...pos.filter((_,i)=>i!==ini).sort(()=>Math.random()-0.5)];
-    const T=INTRO.segundos_estrellas*1000,N=orden.length,t0=performance.now();
-    // cuándo aparece cada una: la primera sola, después se acelera (curva al cubo)
-    orden.forEach((e,k)=>{e.t=k===0?0:T*(0.12+0.88*Math.cbrt(k/(N-1||1)));});
+    // ── 1) las estrellas en 3 tiempos: lento → medio → rápido ──
+    const T1=INTRO.estrellas_lento*1000,T2=INTRO.estrellas_medio*1000,T3=INTRO.estrellas_rapido*1000,N=orden.length;
+    const n1=Math.min(N,10),n2=Math.min(N,n1+Math.round(N*0.18));   // cuántas salen en cada tiempo
+    orden.forEach((e,i)=>{
+      if(i<n1)e.t=T1*Math.sqrt(i/n1);                          // lento: de a una, con calma
+      else if(i<n2)e.t=T1+T2*((i-n1)/Math.max(1,n2-n1))**1.3;   // medio: se van sumando más seguido
+      else e.t=T1+T2+T3*((i-n2)/Math.max(1,N-n2))**0.7;         // rápido: se llena el cielo
+    });
+    const TE=T1+T2+T3;
+    // ── 2) algunas estrellas se juntan y forman el logo ──
+    const logoImg=document.querySelector("#intro-logo img");
+    let parts=null,logoR=null;
+    const prepararLogo=()=>{
+      if(!logoImg||!logoImg.complete||!logoImg.naturalWidth)return false;
+      const r=logoImg.getBoundingClientRect();if(!r.width)return false;
+      logoR={x:r.left*k,y:r.top*k,w:r.width*k,h:r.height*k};
+      try{
+        const W=Math.min(400,logoImg.naturalWidth),H=Math.round(W*logoImg.naturalHeight/logoImg.naturalWidth);
+        const c=document.createElement("canvas");c.width=W;c.height=H;const cg=c.getContext("2d");cg.drawImage(logoImg,0,0,W,H);
+        const d=cg.getImageData(0,0,W,H).data,pts=[];
+        for(let y=0;y<H;y+=2)for(let x=0;x<W;x+=2)if(d[(y*W+x)*4+3]>140)pts.push([x/W,y/H]);
+        if(pts.length<20)return false;
+        pts.sort(()=>Math.random()-0.5);
+        const M=Math.min(INTRO.estrellas_logo,pts.length),D=INTRO.segundos_logo*1000;
+        parts=pts.slice(0,M).map((q,i)=>{
+          const o=orden[Math.floor(Math.random()*N)];   // sale de una estrella del cielo
+          const ang=Math.random()*6.28,curva=(Math.random()-0.5)*0.5;
+          return {x0:o.x+Math.cos(ang)*3*k,y0:o.y+Math.sin(ang)*3*k,x1:logoR.x+q[0]*logoR.w,y1:logoR.y+q[1]*logoR.h,
+            ret:Math.random()*D*0.3,dur:D*(0.5+Math.random()*0.1),curva,tam:(2.2+Math.random()*1.4)*k,fase:Math.random()*6.28};
+        });
+        return true;
+      }catch(e){return false;}
+    };
+    const t0=performance.now(),D=INTRO.segundos_logo*1000,FLASH=700,QUIETO=450;   // QUIETO: el logo de estrellas se queda armado un momento
+    let tLogo=-1;
+    const suave=t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
     const paso=now=>{
       if(!cieloActivo)return;
       const t=now-t0;g.clearRect(0,0,cv.width,cv.height);
+      // mientras se arma el logo el resto del cielo se apaga un poco (y vuelve cuando aparece)
+      const tl0=tLogo>=0?t-tLogo:-1,atenuar=tl0<0?1:tl0<D?1-0.5*Math.min(1,tl0/600):0.5+0.5*Math.min(1,(tl0-D-QUIETO)/FLASH);
       for(const e of orden){
         if(e.t>t)continue;
         const a=Math.min(1,(t-e.t)/350),p=Math.ceil(e.r)+3;
-        g.globalAlpha=a;g.drawImage(F.cache,e.x-p,e.y-p,p*2,p*2,e.x-p,e.y-p,p*2,p*2);
+        g.globalAlpha=a*atenuar;g.drawImage(F.cache,e.x-p,e.y-p,p*2,p*2,e.x-p,e.y-p,p*2,p*2);
       }
       g.globalAlpha=1;
-      if(t<T+400)requestAnimationFrame(paso);else aTitulo();   // todas encendidas: aparece el resto del espacio y el título
+      if(t>=TE+300&&tLogo<0){tLogo=prepararLogo()?t:-2;if(tLogo===-2){aTitulo();return;}}
+      if(tLogo>=0){
+        const tl=t-tLogo;
+        // las estrellitas viajan en curva hasta su lugar en el logo
+        const desv=tl>D+QUIETO?Math.max(0,1-(tl-D-QUIETO)/FLASH):1;
+        for(const q of parts){
+          const f=Math.max(0,Math.min(1,(tl-q.ret)/q.dur));if(f<=0)continue;
+          const e=suave(f),dx=q.x1-q.x0,dy=q.y1-q.y0;
+          const x=q.x0+dx*e-dy*q.curva*Math.sin(Math.PI*e),y=q.y0+dy*e+dx*q.curva*Math.sin(Math.PI*e);
+          const brillo=(0.7+0.3*Math.sin(now/140+q.fase))*desv,s=q.tam;
+          g.globalAlpha=brillo*0.22;g.fillStyle="#7fb2ff";g.fillRect(x-s*1.5,y-s*1.5,s*3,s*3);   // halo
+          g.globalAlpha=brillo;g.fillStyle="#e6f2ff";g.fillRect(x-s/2,y-s/2,s,s);
+        }
+        // ya armado: destello y aparece el logo de verdad
+        if(tl>D+QUIETO*0.4){
+          const a=Math.min(1,(tl-D-QUIETO*0.4)/(FLASH*0.9));
+          if(a>0.25)salioElLogo();
+          g.globalAlpha=a;g.imageSmoothingEnabled=false;g.drawImage(logoImg,logoR.x,logoR.y,logoR.w,logoR.h);
+          const fl=Math.max(0,Math.sin(Math.min(1,(tl-D-QUIETO*0.4)/FLASH)*Math.PI))*0.55;
+          if(fl>0){g.globalAlpha=fl;g.globalCompositeOperation="lighter";g.drawImage(logoImg,logoR.x,logoR.y,logoR.w,logoR.h);g.globalCompositeOperation="source-over";}
+        }
+        g.globalAlpha=1;
+        if(tl>D+QUIETO+FLASH){aTitulo(true);return;}   // el logo ya está: se ve el resto del espacio y "presiona cualquier botón"
+      }
+      requestAnimationFrame(paso);
     };
     requestAnimationFrame(paso);
   };
